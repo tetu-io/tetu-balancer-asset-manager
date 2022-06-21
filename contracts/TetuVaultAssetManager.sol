@@ -25,21 +25,21 @@ pragma solidity 0.8.4;
 contract TetuVaultAssetManager is RewardsAssetManager {
   using SafeERC20 for IERC20;
 
-  //    address public constant VAULT = address(0xeE3B4Ce32A6229ae15903CDa0A5Da92E739685f7);
-
   address public underlying;
   address public tetuVault;
+  address public rewardCollector;
 
   constructor(
     IBVault balancerVault,
     address _tetuVault,
-    //        bytes32 _poolId,
-    address _underlying
+    address _underlying,
+    address _rewardCollector
   ) RewardsAssetManager(balancerVault, IERC20(_underlying)) {
     require(_underlying != address(0), "zero underlying");
-    //        require(_underlying == ISmartVault(_tetuVault).underlying(), "wrong vault underlying");
+    require(_underlying == ISmartVault(_tetuVault).underlying(), "wrong vault underlying");
     underlying = _underlying;
     tetuVault = _tetuVault;
+    rewardCollector = _rewardCollector;
   }
 
   /**
@@ -52,7 +52,7 @@ contract TetuVaultAssetManager is RewardsAssetManager {
   }
 
   /**
-   * @dev Deposits capital into Iron
+   * @dev Deposits capital into Tetu Vault
    * @param amount - the amount of tokens being deposited
    * @return the amount deposited
    */
