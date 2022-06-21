@@ -48,7 +48,6 @@ contract TetuVaultAssetManager is RewardsAssetManager {
    */
   function initialize(bytes32 poolId) public {
     _initialize(poolId);
-    //todo not sure if needed
   }
 
   /**

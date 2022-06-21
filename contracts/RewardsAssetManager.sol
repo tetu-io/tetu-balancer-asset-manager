@@ -46,15 +46,10 @@ abstract contract RewardsAssetManager is IAssetManager {
 
   event InvestmentConfigSet(uint64 targetPercentage, uint64 lowerCriticalPercentage, uint64 upperCriticalPercentage);
 
-  constructor(
-    IBVault vault,
-    //        bytes32 poolId,
-    IERC20 token
-  ) {
+  constructor(IBVault vault, IERC20 token) {
     token.approve(address(vault), type(uint256).max);
 
     _vault = vault;
-    //        _poolId = poolId;
     _token = token;
   }
 
