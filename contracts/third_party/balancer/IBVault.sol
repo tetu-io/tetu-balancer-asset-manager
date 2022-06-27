@@ -8,6 +8,38 @@ interface IAsset {
 }
 
 interface IBVault {
+  // Relayers
+  //
+  // Additionally, it is possible for an account to perform certain actions on behalf of another one, using their
+  // Vault ERC20 allowance and Internal Balance. These accounts are said to be 'relayers' for these Vault functions,
+  // and are expected to be smart contracts with sound authentication mechanisms. For an account to be able to wield
+  // this power, two things must occur:
+  //  - The Authorizer must grant the account the permission to be a relayer for the relevant Vault function. This
+  //    means that Balancer governance must approve each individual contract to act as a relayer for the intended
+  //    functions.
+  //  - Each user must approve the relayer to act on their behalf.
+  // This double protection means users cannot be tricked into approving malicious relayers (because they will not
+  // have been allowed by the Authorizer via governance), nor can malicious relayers approved by a compromised
+  // Authorizer or governance drain user funds, since they would also need to be approved by each individual user.
+
+  /**
+   * @dev Returns true if `user` has approved `relayer` to act as a relayer for them.
+     */
+  function hasApprovedRelayer(address user, address relayer) external view returns (bool);
+
+  /**
+   * @dev Allows `relayer` to act as a relayer for `sender` if `approved` is true, and disallows it otherwise.
+     *
+     * Emits a `RelayerApprovalChanged` event.
+     */
+  function setRelayerApproval(
+    address sender,
+    address relayer,
+    bool approved
+  ) external;
+
+
+
   // Internal Balance
   //
   // Users can deposit tokens into the Vault, where they are allocated to their Internal Balance, and later
@@ -577,16 +609,18 @@ interface IBVault {
     bytes memory userData
   ) external returns (uint256 bptIn, uint256[] memory amountsOut);
 
-  enum PoolBalanceOpKind { WITHDRAW, DEPOSIT, UPDATE }
+  enum PoolBalanceOpKind {WITHDRAW, DEPOSIT, UPDATE}
 
   struct PoolBalanceOp {
-        PoolBalanceOpKind kind;
-        bytes32 poolId;
-        IERC20 token;
-        uint256 amount;
-    }
+    PoolBalanceOpKind kind;
+    bytes32 poolId;
+    IERC20 token;
+    uint256 amount;
+  }
 
-    function managePoolBalance(PoolBalanceOp[] memory ops) external;
+  function managePoolBalance(PoolBalanceOp[] memory ops) external;
+
+  function getActionId(bytes4 selector) external view returns (bytes32);
 
 
 }

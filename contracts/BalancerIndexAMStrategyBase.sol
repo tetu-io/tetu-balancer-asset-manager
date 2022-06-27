@@ -43,9 +43,6 @@ abstract contract BalancerIndexAMStrategyBase is ProxyStrategyBase {
   // DO NOT ADD ANY VARIABLES MORE! ONLY CONSTANTS!
   /// @dev Deprecated, use slots instead
   //  mapping(bytes32 => uint) private strategyUintStorage;
-  //  bytes32 internal constant _DUST_SLOT = bytes32(uint(keccak256("mesh.staking.dust")) - 1);
-  //  bytes32 internal constant _TARGET_VAULT_SLOT = bytes32(uint(keccak256("mesh.staking.target.vault")) - 1);
-  //  bytes32 internal constant _REWARDS_TOKENS_SPECIFIC_SLOT = bytes32(uint(keccak256("mesh.staking.rewards.tokens.specific")) - 1);
   // DO NOT ADD ANY VARIABLES MORE! ONLY CONSTANTS!
 
   /// @notice Initialize contract after setup it as proxy implementation

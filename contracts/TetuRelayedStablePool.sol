@@ -12,41 +12,61 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import "@balancer-labs/v2-pool-weighted/contracts/WeightedPool.sol";
+import "@balancer-labs/v2-pool-stable/contracts/StablePool.sol";
+import "./third_party/balancer/StablePoolUserData.sol";
+import "./third_party/balancer/IRelayedBasePool.sol";
+
 pragma solidity ^0.7.0;
 
 pragma experimental ABIEncoderV2;
 
-contract TetuWeightedPool is WeightedPool {
-  address public immutable strategy;
+contract TetuRelayedStablePool is StablePool, IRelayedBasePool {
+  using StablePoolUserData for bytes;
+
+  IBasePoolRelayer internal immutable _relayer;
+
+  modifier ensureRelayerEnterCall(bytes32 poolId, bytes calldata userData) {
+    StablePoolUserData.JoinKind kind = userData.joinKind();
+    if (kind != StablePoolUserData.JoinKind.INIT) {
+      require(_relayer.hasCalledPool(poolId), "Only relayer can join pool");
+    }
+    _;
+  }
+
+  modifier ensureRelayerExitCall(bytes32 poolId) {
+    require(_relayer.hasCalledPool(poolId), "Only relayer can exit pool");
+    _;
+  }
 
   constructor(
     IVault vault,
     string memory name,
     string memory symbol,
     IERC20[] memory tokens,
-    uint256[] memory normalizedWeights,
-    address[] memory assetManagers,
+    uint256 amplificationParameter,
     uint256 swapFeePercentage,
     uint256 pauseWindowDuration,
     uint256 bufferPeriodDuration,
     address owner,
-    address _strategy
+    address relayer
   )
-    WeightedPool(
+    StablePool(
       vault,
       name,
       symbol,
       tokens,
-      normalizedWeights,
-      assetManagers,
+      amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
       owner
     )
   {
-    strategy = _strategy;
+    _relayer = IBasePoolRelayer(relayer);
+  }
+
+  function getRelayer() public view override returns (IBasePoolRelayer) {
+    return _relayer;
   }
 
   function onJoinPool(
@@ -56,9 +76,8 @@ contract TetuWeightedPool is WeightedPool {
     uint256[] memory balances,
     uint256 lastChangeBlock,
     uint256 protocolSwapFeePercentage,
-    bytes memory userData
-  ) public virtual override returns (uint256[] memory, uint256[] memory) {
-    require(msg.sender == strategy, "Only strategy can join pool");
+    bytes calldata userData
+  ) public virtual override ensureRelayerEnterCall(poolId, userData) returns (uint256[] memory, uint256[] memory) {
     return super.onJoinPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
   }
 
@@ -69,9 +88,8 @@ contract TetuWeightedPool is WeightedPool {
     uint256[] memory balances,
     uint256 lastChangeBlock,
     uint256 protocolSwapFeePercentage,
-    bytes memory userData
-  ) public virtual override returns (uint256[] memory, uint256[] memory) {
-    require(msg.sender == strategy, "Only strategy can exit pool");
+    bytes calldata userData
+  ) public virtual override ensureRelayerExitCall(poolId) returns (uint256[] memory, uint256[] memory) {
     return super.onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
   }
 }
