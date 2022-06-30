@@ -14,7 +14,7 @@
 
 import "@tetu_io/tetu-contracts/contracts/openzeppelin/SafeERC20.sol";
 import "@tetu_io/tetu-contracts/contracts/openzeppelin/Math.sol";
-import "./interface/ISmartVault.sol";
+import "./interface/IERC4626.sol";
 import "./third_party/balancer/IBVault.sol";
 import "./RewardsAssetManager.sol";
 
@@ -36,7 +36,7 @@ contract TetuVaultAssetManager is RewardsAssetManager {
     address _rewardCollector
   ) RewardsAssetManager(balancerVault, IERC20(_underlying)) {
     require(_underlying != address(0), "zero underlying");
-    require(_underlying == ISmartVault(_tetuVault).underlying(), "wrong vault underlying");
+    //    require(_underlying == ISmartVault(_tetuVault).underlying(), "wrong vault underlying");
     underlying = _underlying;
     tetuVault = _tetuVault;
     rewardCollector = _rewardCollector;
@@ -71,7 +71,7 @@ contract TetuVaultAssetManager is RewardsAssetManager {
     console.log("underlying: %s", underlying);
     console.log("tetuVault: %s", tetuVault);
 
-    ISmartVault(tetuVault).deposit(balance);
+    //    IERC4626(tetuVault).deposit(balance);
     console.log("invest > AUM: %s", _getAUM());
     console.log("invested %s of  %s", balance, underlying);
     return balance;
@@ -88,7 +88,7 @@ contract TetuVaultAssetManager is RewardsAssetManager {
     amountUnderlying = Math.min(amountUnderlying, _getAUM());
     console.log("_divest request amountUnderlying: %s", amountUnderlying);
     if (amountUnderlying > 0) {
-      ISmartVault(tetuVault).withdraw(amountUnderlying);
+      //      IERC4626(tetuVault).withdraw(amountUnderlying);
     }
     console.log("AUM: %s", _getAUM());
     uint256 divested = IERC20(underlying).balanceOf(address(this));
@@ -100,7 +100,7 @@ contract TetuVaultAssetManager is RewardsAssetManager {
    * @dev Checks balance of managed assets
    */
   function _getAUM() internal view override returns (uint256) {
-    return ISmartVault(tetuVault).underlyingBalanceWithInvestmentForHolder(address(this));
+    return IERC4626(tetuVault).maxWithdraw(address(this));
   }
 
   /// @dev Claim all rewards from given tetuVault and send to pool/strategy
@@ -110,16 +110,16 @@ contract TetuVaultAssetManager is RewardsAssetManager {
 
   /// @dev Claim all rewards from given tetuVault and send to pool/strategy
   function _claim() private {
-    ISmartVault sv = ISmartVault(tetuVault);
-
-    for (uint256 i = 0; i < sv.rewardTokensLength(); i++) {
-      address rt = sv.rewardTokens()[i];
-      uint256 bal = IERC20(rt).balanceOf(address(this));
-      sv.getReward(rt);
-      uint256 claimed = IERC20(rt).balanceOf(address(this)) - bal;
-      if (claimed > 0) {
-        IERC20(rt).safeTransfer(getPoolAddress(), claimed);
-      }
-    }
+    //    IERC4626 sv = IERC4626(tetuVault);
+    //
+    //    for (uint256 i = 0; i < sv.rewardTokensLength(); i++) {
+    //      address rt = sv.rewardTokens()[i];
+    //      uint256 bal = IERC20(rt).balanceOf(address(this));
+    //      sv.getReward(rt);
+    //      uint256 claimed = IERC20(rt).balanceOf(address(this)) - bal;
+    //      if (claimed > 0) {
+    //        IERC20(rt).safeTransfer(getPoolAddress(), claimed);
+    //      }
+    //    }
   }
 }

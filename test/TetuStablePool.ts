@@ -4,7 +4,7 @@ import { solidity } from "ethereum-waffle"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { ethers } from "hardhat"
 import { IBVault, IVaultAuthorizer, MockERC20, RebalancingRelayer, TetuRelayedStablePool } from "../typechain"
-import { BigNumber, Contract } from "ethers"
+import { BigNumber } from "ethers"
 import { Misc } from "./utils/Misc"
 
 const hre = require("hardhat")
@@ -12,11 +12,6 @@ const hre = require("hardhat")
 const { expect } = chai
 chai.use(chaiAsPromised)
 chai.use(solidity)
-
-const actionId = (instance: Contract, method: string): Promise<string> => {
-  const selector = instance.interface.getSighash(method)
-  return instance.getActionId(selector)
-}
 
 describe("TetuStablePool tests", function () {
   let deployer: SignerWithAddress
@@ -28,38 +23,31 @@ describe("TetuStablePool tests", function () {
   let poolId: string
   let balancerVault: IBVault
 
-  const balancerVaultAddress = "0xBA12222222228d8Ba445958a75a0704d566BF2C8"
-  const balancerVaultAdminAddress = "0xd2bD536ADB0198f74D5f4f2Bd4Fe68Bae1e1Ba80"
-  const balancerVaultAuthorizerAddress = "0xA331D84eC860Bf466b4CdCcFb4aC09a1B43F3aE6"
-
   const ampParam = 500
   const swapFee = "3000000000000000"
-
   const poolName = "Tetu stable pool"
   const poolSymbol = "TETU-USDC-DAI"
-  const largeApproval = "100000000000000000000000000000000"
-  const ANY_ADDRESS = "0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF"
 
   before(async function () {
     ;[deployer, user] = await ethers.getSigners()
     const USDC = await ethers.getContractFactory("MockERC20")
     mockUsdc = await USDC.deploy("USD Coin (PoS)", "USDC", 6)
-    await mockUsdc.mint(deployer.address, BigNumber.from(largeApproval))
-    await mockUsdc.mint(user.address, BigNumber.from(largeApproval))
+    await mockUsdc.mint(deployer.address, BigNumber.from(Misc.largeApproval))
+    await mockUsdc.mint(user.address, BigNumber.from(Misc.largeApproval))
 
     const DAI = await ethers.getContractFactory("MockERC20")
     mockDai = await DAI.deploy("(PoS) Dai Stablecoin", "DAI", 18)
-    await mockDai.mint(deployer.address, BigNumber.from(largeApproval))
-    await mockDai.mint(user.address, BigNumber.from(largeApproval))
+    await mockDai.mint(deployer.address, BigNumber.from(Misc.largeApproval))
+    await mockDai.mint(user.address, BigNumber.from(Misc.largeApproval))
 
     const RelayerFact = await ethers.getContractFactory("RebalancingRelayer")
-    relayer = await RelayerFact.deploy(balancerVaultAddress)
+    relayer = await RelayerFact.deploy(Misc.balancerVaultAddress)
   })
 
   beforeEach(async function () {
     const TetuStablePoolFact = await ethers.getContractFactory("TetuRelayedStablePool")
     stablePool = (await TetuStablePoolFact.deploy(
-      balancerVaultAddress,
+      Misc.balancerVaultAddress,
       poolName,
       poolSymbol,
       [mockUsdc.address, mockDai.address],
@@ -68,22 +56,27 @@ describe("TetuStablePool tests", function () {
       "0",
       "0",
       deployer.address,
-      relayer.address
+      relayer.address,
+      [ethers.constants.AddressZero, ethers.constants.AddressZero]
     )) as TetuRelayedStablePool
 
     poolId = await stablePool.getPoolId()
 
-    balancerVault = await ethers.getContractAt("IBVault", balancerVaultAddress)
+    balancerVault = await ethers.getContractAt("IBVault", Misc.balancerVaultAddress)
     const authorizer = (await ethers.getContractAt(
       "IVaultAuthorizer",
-      balancerVaultAuthorizerAddress
+      Misc.balancerVaultAuthorizerAddress
     )) as IVaultAuthorizer
 
-    const actionJoin = await actionId(balancerVault, "joinPool")
-    const actionExit = await actionId(balancerVault, "exitPool")
+    const actionJoin = await Misc.actionId(balancerVault, "joinPool")
+    const actionExit = await Misc.actionId(balancerVault, "exitPool")
 
-    await authorizer.connect(await Misc.impersonate(balancerVaultAdminAddress)).grantRole(actionJoin, relayer.address)
-    await authorizer.connect(await Misc.impersonate(balancerVaultAdminAddress)).grantRole(actionExit, relayer.address)
+    await authorizer
+      .connect(await Misc.impersonate(Misc.balancerVaultAdminAddress))
+      .grantRole(actionJoin, relayer.address)
+    await authorizer
+      .connect(await Misc.impersonate(Misc.balancerVaultAdminAddress))
+      .grantRole(actionExit, relayer.address)
 
     await balancerVault.connect(user).setRelayerApproval(user.address, relayer.address, true)
   })

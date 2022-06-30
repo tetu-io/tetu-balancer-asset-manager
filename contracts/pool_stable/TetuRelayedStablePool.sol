@@ -12,22 +12,22 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import "@balancer-labs/v2-pool-stable/contracts/StablePool.sol";
-import "./third_party/balancer/StablePoolUserData.sol";
-import "./third_party/balancer/IRelayedBasePool.sol";
+
+import "./TetuStablePool.sol";
+import "../third_party/balancer/IRelayedBasePool.sol";
 
 pragma solidity ^0.7.0;
 
 pragma experimental ABIEncoderV2;
 
-contract TetuRelayedStablePool is StablePool, IRelayedBasePool {
-  using StablePoolUserData for bytes;
+contract TetuRelayedStablePool is TetuStablePool, IRelayedBasePool {
+  using TetuStablePoolUserDataHelpers for bytes;
 
   IBasePoolRelayer internal immutable _relayer;
 
   modifier ensureRelayerEnterCall(bytes32 poolId, bytes calldata userData) {
-    StablePoolUserData.JoinKind kind = userData.joinKind();
-    if (kind != StablePoolUserData.JoinKind.INIT) {
+    TetuStablePool.JoinKind kind = userData.joinKind();
+    if (kind != TetuStablePool.JoinKind.INIT) {
       require(_relayer.hasCalledPool(poolId), "Only relayer can join pool");
     }
     _;
@@ -48,19 +48,21 @@ contract TetuRelayedStablePool is StablePool, IRelayedBasePool {
     uint256 pauseWindowDuration,
     uint256 bufferPeriodDuration,
     address owner,
-    address relayer
+    address relayer,
+    address[] memory assetManagers
   )
-    StablePool(
-      vault,
-      name,
-      symbol,
-      tokens,
-      amplificationParameter,
-      swapFeePercentage,
-      pauseWindowDuration,
-      bufferPeriodDuration,
-      owner
-    )
+  TetuStablePool(
+    vault,
+    name,
+    symbol,
+    tokens,
+    amplificationParameter,
+    swapFeePercentage,
+    pauseWindowDuration,
+    bufferPeriodDuration,
+    owner,
+    assetManagers
+  )
   {
     _relayer = IBasePoolRelayer(relayer);
   }
