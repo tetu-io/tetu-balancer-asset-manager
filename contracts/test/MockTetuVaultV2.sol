@@ -46,7 +46,9 @@ contract MockTetuVaultV2 is IERC4626, ERC20 {
     address receiver,
     address owner
   ) external override returns (uint shares){
-    return 42;
+    _burn(owner, assets);
+    IERC20(underlying).safeTransfer(receiver, assets);
+    return assets;
   }
 
   function redeem(
@@ -54,7 +56,9 @@ contract MockTetuVaultV2 is IERC4626, ERC20 {
     address receiver,
     address owner
   ) external override returns (uint assets){
-    return 42;
+    _burn(owner, shares);
+    IERC20(underlying).safeTransfer(receiver, shares);
+    return shares;
   }
 
   function totalAssets() external view override returns (uint){

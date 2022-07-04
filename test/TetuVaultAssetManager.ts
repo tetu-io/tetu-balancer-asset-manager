@@ -139,16 +139,16 @@ describe("TetuVaultAssetManager tests", function () {
     await assetManager.initialize(poolId)
 
     const config = {
-      targetPercentage: BigNumber.from(5).mul(BigNumber.from(10).pow(17)),
-      upperCriticalPercentage: BigNumber.from(6).mul(BigNumber.from(10).pow(17)),
-      lowerCriticalPercentage: BigNumber.from(4).mul(BigNumber.from(10).pow(17))
+      targetPercentage: BigNumber.from(8).mul(BigNumber.from(10).pow(17)),
+      upperCriticalPercentage: BigNumber.from(9).mul(BigNumber.from(10).pow(17)),
+      lowerCriticalPercentage: BigNumber.from(1).mul(BigNumber.from(10).pow(17))
     }
 
     await stablePool.setAssetManagerPoolConfig(mockUsdc.address, Misc.encodeInvestmentConfig(config))
     const investmentConfig = await assetManager.getInvestmentConfig(poolId)
-    expect(investmentConfig[0]).is.equal("500000000000000000")
-    expect(investmentConfig[1]).is.equal("600000000000000000")
-    expect(investmentConfig[2]).is.equal("400000000000000000")
+    expect(investmentConfig[0]).is.equal("800000000000000000")
+    expect(investmentConfig[1]).is.equal("900000000000000000")
+    expect(investmentConfig[2]).is.equal("100000000000000000")
 
     // todo: real vault vs deployed
     // balancerVault = await ethers.getContractAt("IBVault", Misc.balancerVaultAddress)
@@ -194,15 +194,54 @@ describe("TetuVaultAssetManager tests", function () {
 
       expect(await stablePool.balanceOf(user.address)).is.not.equal(0)
 
-      // deposited 101 USDC
       await assetManager.rebalance(poolId, false)
       const balances = await balancerVault.getPoolTokenInfo(poolId, mockUsdc.address)
-      // AM should invest 50% 50.5 USDC
+
       expect(balances[0]).is.equal(usdcInitialBalance.add(usdcToDeposit).div(2))
       expect(balances[1]).is.equal(usdcInitialBalance.add(usdcToDeposit).div(2))
 
       // 50.5 USDC should be in tetuVault
       expect(await mockUsdc.balanceOf(tetuVault.address)).is.equal(usdcInitialBalance.add(usdcToDeposit).div(2))
+    })
+  })
+
+  describe("Withdraw", function () {
+    it("AM should be able to handle exit from pool when funds in vault is not enough", async function () {
+      const tokens = [mockUsdc, mockDai]
+      await initPool(tokens)
+      const userUSDCBalanceBefore = await mockUsdc.balanceOf(user.address)
+      const usdcToDeposit = BigNumber.from(5).mul(BigNumber.from(10).pow(18))
+      const daiToDeposit = BigNumber.from(5).mul(BigNumber.from(10).pow(18))
+      await deposit(user, tokens, [usdcToDeposit, daiToDeposit])
+
+      expect(await stablePool.balanceOf(user.address)).is.not.equal(0)
+
+      await assetManager.rebalance(poolId, false)
+
+      const bptBalanceBefore = await stablePool.balanceOf(user.address)
+
+      const EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0
+      const exitTokenIndex = 0
+      const exitUserData = ethers.utils.defaultAbiCoder.encode(
+        ["uint256", "uint256", "uint256"],
+        [EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptBalanceBefore, exitTokenIndex]
+      )
+
+      await relayer.connect(user).exitPool(
+        poolId,
+        user.address,
+        {
+          assets: [tokens[0].address, tokens[1].address],
+          minAmountsOut: Array(tokens.length).fill(0),
+          userData: exitUserData,
+          toInternalBalance: false
+        },
+        [usdcToDeposit, 0]
+      )
+      const bptBalanceAfter = await stablePool.balanceOf(user.address)
+      const userUSDCBalanceAfter = await mockUsdc.balanceOf(user.address)
+      expect(userUSDCBalanceAfter).is.gt(userUSDCBalanceBefore)
+      expect(bptBalanceAfter).is.equal(0)
     })
   })
 })

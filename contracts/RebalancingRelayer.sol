@@ -35,7 +35,7 @@ contract RebalancingRelayer is IBasePoolRelayer {
     _calledPool = poolId;
     _;
     _calledPool = _EMPTY_CALLED_POOL;
-    //    _rebalance(poolId, tokens);
+    _rebalance(poolId, tokens);
   }
 
   IBVault public immutable vault;

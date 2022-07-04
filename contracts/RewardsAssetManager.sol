@@ -16,6 +16,7 @@ pragma solidity 0.8.4;
 
 import "./third_party/balancer/IBVault.sol";
 import "./third_party/balancer/IAssetManager.sol";
+import "./third_party/balancer/IRelayedBasePool8.sol";
 
 import "hardhat/console.sol";
 
@@ -58,13 +59,13 @@ abstract contract RewardsAssetManager is IAssetManager {
     _;
   }
 
-  //    modifier onlyPoolStrategy() {
-  //        require(
-  //            msg.sender == address(TetuWeightedPool(getPoolAddress()).strategy()),
-  //            "Only strategy can call this method"
-  //        );
-  //        _;
-  //    }
+  modifier onlyPoolRebalancer() {
+    require(
+      msg.sender == address(IRelayedBasePool(getPoolAddress()).getRelayer()),
+      "Only callable by authorized rebalancer"
+    );
+    _;
+  }
 
   modifier withCorrectPool(bytes32 pId) {
     require(pId == _poolId, "SinglePoolAssetManager called with incorrect poolId");
@@ -139,7 +140,6 @@ abstract contract RewardsAssetManager is IAssetManager {
 
     uint256 aum = _getAUM();
     console.log("aum => %s", aum);
-
 
     IBVault.PoolBalanceOp[] memory ops = new IBVault.PoolBalanceOp[](2);
     // Update the vault with new managed balance accounting for returns
@@ -252,7 +252,7 @@ abstract contract RewardsAssetManager is IAssetManager {
     (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
     InvestmentConfig memory config = _config;
 
-    uint256 targetInvestment = (poolCash + poolManaged) * config.targetPercentage / 1e18;
+    uint256 targetInvestment = ((poolCash + poolManaged) * config.targetPercentage) / 1e18;
     if (targetInvestment > poolManaged) {
       // Pool is under-invested so add more funds
       uint256 rebalanceAmount = targetInvestment - poolManaged;
@@ -285,8 +285,8 @@ abstract contract RewardsAssetManager is IAssetManager {
    * @param pId - the poolId of the pool to withdraw funds back to
    * @param amount - the amount of tokens to withdraw back to the pool
    */
-  // todo add protection (only strategy can do it)
-  function capitalOut(bytes32 pId, uint256 amount) external override withCorrectPool(pId) {
+  function capitalOut(bytes32 pId, uint256 amount) external override withCorrectPool(pId) onlyPoolRebalancer {
+    console.log(">> capitalOut %s", amount);
     _capitalOut(amount);
   }
 }
