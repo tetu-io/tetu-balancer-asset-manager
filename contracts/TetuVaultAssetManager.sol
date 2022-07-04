@@ -71,7 +71,7 @@ contract TetuVaultAssetManager is RewardsAssetManager {
     console.log("underlying: %s", underlying);
     console.log("tetuVault: %s", tetuVault);
 
-    //    IERC4626(tetuVault).deposit(balance);
+    IERC4626(tetuVault).deposit(balance, address(this));
     console.log("invest > AUM: %s", _getAUM());
     console.log("invested %s of  %s", balance, underlying);
     return balance;
@@ -88,7 +88,7 @@ contract TetuVaultAssetManager is RewardsAssetManager {
     amountUnderlying = Math.min(amountUnderlying, _getAUM());
     console.log("_divest request amountUnderlying: %s", amountUnderlying);
     if (amountUnderlying > 0) {
-      //      IERC4626(tetuVault).withdraw(amountUnderlying);
+      IERC4626(tetuVault).withdraw(amountUnderlying, address(this), address(this));
     }
     console.log("AUM: %s", _getAUM());
     uint256 divested = IERC20(underlying).balanceOf(address(this));

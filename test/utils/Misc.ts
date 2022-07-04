@@ -1,5 +1,11 @@
 import hre, { ethers } from "hardhat"
-import { BigNumberish, Contract } from "ethers"
+import { BigNumber, BigNumberish, Contract } from "ethers"
+
+export type InvestmentConfig = {
+  targetPercentage: BigNumberish
+  upperCriticalPercentage: BigNumberish
+  lowerCriticalPercentage: BigNumberish
+}
 
 export class Misc {
   public static readonly SECONDS_OF_DAY = 60 * 60 * 24
@@ -36,6 +42,14 @@ export class Misc {
     const selector = instance.interface.getSighash(method)
     return instance.getActionId(selector)
   }
+
+  public static encodeInvestmentConfig(config: InvestmentConfig): string {
+    return ethers.utils.defaultAbiCoder.encode(
+      ['uint64', 'uint64', 'uint64'],
+      [BigNumber.from(config.targetPercentage), BigNumber.from(config.upperCriticalPercentage), BigNumber.from(config.lowerCriticalPercentage)]
+    );
+  }
+
 }
 
 function encodeJoinExitMockPool(amounts: BigNumberish[], dueProtocolFeeAmounts: BigNumberish[]): string {

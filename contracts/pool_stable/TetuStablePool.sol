@@ -25,6 +25,7 @@ import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
 
 import "@balancer-labs/v2-pool-stable/contracts/StableMath.sol";
 import "./TetuStablePoolUserDataHelpers.sol";
+import "hardhat/console.sol";
 
 contract TetuStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRateProvider {
   using WordCodec for bytes32;
@@ -319,6 +320,7 @@ contract TetuStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath,
     _upscaleArray(amountsIn, scalingFactors);
 
     (uint256 currentAmp,) = _getAmplificationParameter();
+    console.log("currentAmp %s", currentAmp);
     uint256 bptAmountOut = StableMath._calcBptOutGivenExactTokensIn(
       currentAmp,
       balances,

@@ -86,7 +86,7 @@ abstract contract RewardsAssetManager is IAssetManager {
   }
 
   function getPoolAddress() public view returns (address addr) {
-    uint256 shifted = uint256(_poolId) / 2**(8 * 12);
+    uint256 shifted = uint256(_poolId) / 2 ** (8 * 12);
     return address(uint160(shifted));
   }
 
@@ -105,7 +105,7 @@ abstract contract RewardsAssetManager is IAssetManager {
   }
 
   function _maxInvestableBalance(uint256 aum) internal view returns (int256) {
-    (uint256 poolCash, , , ) = getVault().getPoolTokenInfo(_poolId, getToken());
+    (uint256 poolCash, , ,) = getVault().getPoolTokenInfo(_poolId, getToken());
     // Calculate the managed portion of funds locally as the Vault is unaware of returns
     //        return int256(FixedPoint.mulDown(poolCash.add(aum), _config.targetPercentage)) - int256(aum);
     //todo
@@ -113,7 +113,6 @@ abstract contract RewardsAssetManager is IAssetManager {
   }
 
   // Reporting
-
   function updateBalanceOfPool(bytes32 pId) public override withCorrectPool(pId) {
     uint256 managedBalance = _getAUM();
 
@@ -139,6 +138,8 @@ abstract contract RewardsAssetManager is IAssetManager {
     console.log("_capitalIn => %s", amount);
 
     uint256 aum = _getAUM();
+    console.log("aum => %s", aum);
+
 
     IBVault.PoolBalanceOp[] memory ops = new IBVault.PoolBalanceOp[](2);
     // Update the vault with new managed balance accounting for returns
@@ -213,11 +214,11 @@ abstract contract RewardsAssetManager is IAssetManager {
   }
 
   function getPoolBalances(bytes32 pId)
-    public
-    view
-    override
-    withCorrectPool(pId)
-    returns (uint256 poolCash, uint256 poolManaged)
+  public
+  view
+  override
+  withCorrectPool(pId)
+  returns (uint256 poolCash, uint256 poolManaged)
   {
     (poolCash, poolManaged) = _getPoolBalances(_getAUM());
     console.log(">> poolCash %s", poolCash);
@@ -225,7 +226,7 @@ abstract contract RewardsAssetManager is IAssetManager {
   }
 
   function _getPoolBalances(uint256 aum) internal view returns (uint256 poolCash, uint256 poolManaged) {
-    (poolCash, , , ) = getVault().getPoolTokenInfo(_poolId, getToken());
+    (poolCash,,,) = getVault().getPoolTokenInfo(_poolId, getToken());
     // Calculate the managed portion of funds locally as the Vault is unaware of returns
     poolManaged = aum;
   }
@@ -251,10 +252,11 @@ abstract contract RewardsAssetManager is IAssetManager {
     (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
     InvestmentConfig memory config = _config;
 
-    uint256 targetInvestment = (poolCash + poolManaged) * config.targetPercentage;
+    uint256 targetInvestment = (poolCash + poolManaged) * config.targetPercentage / 1e18;
     if (targetInvestment > poolManaged) {
       // Pool is under-invested so add more funds
       uint256 rebalanceAmount = targetInvestment - poolManaged;
+      console.log("rebalanceAmount %s", rebalanceAmount);
       _capitalIn(rebalanceAmount);
     } else {
       // Pool is over-invested so remove some funds
@@ -270,6 +272,8 @@ abstract contract RewardsAssetManager is IAssetManager {
       _rebalance(pId);
     } else {
       (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(_getAUM());
+      console.log(">> poolCash %s", poolCash);
+      console.log(">> poolManaged %s", poolManaged);
       if (shouldRebalance(poolCash, poolManaged)) {
         _rebalance(pId);
       }
