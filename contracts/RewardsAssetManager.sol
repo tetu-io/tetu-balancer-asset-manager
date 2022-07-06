@@ -29,8 +29,7 @@ import "hardhat/console.sol";
  */
 
 abstract contract RewardsAssetManager is IAssetManager {
-  //    using Math for uint256;
-
+  uint256 private constant _CONFIG_PRECISION = 1e18;
   IBVault private immutable _vault;
   IERC20 private immutable _token;
 
@@ -108,9 +107,7 @@ abstract contract RewardsAssetManager is IAssetManager {
   function _maxInvestableBalance(uint256 aum) internal view returns (int256) {
     (uint256 poolCash, , ,) = getVault().getPoolTokenInfo(_poolId, getToken());
     // Calculate the managed portion of funds locally as the Vault is unaware of returns
-    //        return int256(FixedPoint.mulDown(poolCash.add(aum), _config.targetPercentage)) - int256(aum);
-    //todo
-    return 42;
+    return int256((poolCash + aum) * _config.targetPercentage / _CONFIG_PRECISION) - int256(aum);
   }
 
   // Reporting
@@ -136,17 +133,12 @@ abstract contract RewardsAssetManager is IAssetManager {
    * @param amount - the amount of tokens being deposited
    */
   function _capitalIn(uint256 amount) private {
-    console.log("_capitalIn => %s", amount);
-
-    uint256 aum = _getAUM();
-    console.log("aum => %s", aum);
-
     IBVault.PoolBalanceOp[] memory ops = new IBVault.PoolBalanceOp[](2);
     // Update the vault with new managed balance accounting for returns
+    uint256 aum = _getAUM();
     ops[0] = IBVault.PoolBalanceOp(IBVault.PoolBalanceOpKind.UPDATE, _poolId, getToken(), aum);
     // Pull funds from the vault
     ops[1] = IBVault.PoolBalanceOp(IBVault.PoolBalanceOpKind.WITHDRAW, _poolId, getToken(), amount);
-
     getVault().managePoolBalance(ops);
 
     _invest(amount, aum);
@@ -157,11 +149,8 @@ abstract contract RewardsAssetManager is IAssetManager {
    * @param amount - the amount of tokens to withdraw to the vault
    */
   function _capitalOut(uint256 amount) private {
-    console.log("_capitalOut => %s", amount);
-
     uint256 aum = _getAUM();
     uint256 tokensOut = _divest(amount, aum);
-
     IBVault.PoolBalanceOp[] memory ops = new IBVault.PoolBalanceOp[](2);
     // Update the vault with new managed balance accounting for returns
     ops[0] = IBVault.PoolBalanceOp(IBVault.PoolBalanceOpKind.UPDATE, _poolId, getToken(), aum);
@@ -195,7 +184,7 @@ abstract contract RewardsAssetManager is IAssetManager {
   function setConfig(bytes32 pId, bytes memory rawConfig) external override withCorrectPool(pId) onlyPoolContract {
     InvestmentConfig memory config = abi.decode(rawConfig, (InvestmentConfig));
 
-    require(config.upperCriticalPercentage <= 1e18, "Upper critical level must be less than or equal to 100%");
+    require(config.upperCriticalPercentage <= _CONFIG_PRECISION, "Upper critical level must be less than or equal to 100%");
     require(
       config.targetPercentage <= config.upperCriticalPercentage,
       "Target must be less than or equal to upper critical level"
@@ -221,8 +210,6 @@ abstract contract RewardsAssetManager is IAssetManager {
   returns (uint256 poolCash, uint256 poolManaged)
   {
     (poolCash, poolManaged) = _getPoolBalances(_getAUM());
-    console.log(">> poolCash %s", poolCash);
-    console.log(">> poolManaged %s", poolManaged);
   }
 
   function _getPoolBalances(uint256 aum) internal view returns (uint256 poolCash, uint256 poolManaged) {
@@ -235,9 +222,7 @@ abstract contract RewardsAssetManager is IAssetManager {
    * @notice Determines whether the pool should rebalance given the provided balances
    */
   function shouldRebalance(uint256 cash, uint256 managed) public view override returns (bool) {
-    uint256 investedPercentage = (cash * 1e18) / (cash + managed);
-    console.log(">> investedPercentage %s", investedPercentage);
-
+    uint256 investedPercentage = (cash * _CONFIG_PRECISION) / (cash + managed);
     InvestmentConfig memory config = _config;
     return investedPercentage > config.upperCriticalPercentage || investedPercentage < config.lowerCriticalPercentage;
   }
@@ -252,11 +237,10 @@ abstract contract RewardsAssetManager is IAssetManager {
     (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
     InvestmentConfig memory config = _config;
 
-    uint256 targetInvestment = ((poolCash + poolManaged) * config.targetPercentage) / 1e18;
+    uint256 targetInvestment = ((poolCash + poolManaged) * config.targetPercentage) / _CONFIG_PRECISION;
     if (targetInvestment > poolManaged) {
       // Pool is under-invested so add more funds
       uint256 rebalanceAmount = targetInvestment - poolManaged;
-      console.log("rebalanceAmount %s", rebalanceAmount);
       _capitalIn(rebalanceAmount);
     } else {
       // Pool is over-invested so remove some funds
@@ -272,8 +256,6 @@ abstract contract RewardsAssetManager is IAssetManager {
       _rebalance(pId);
     } else {
       (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(_getAUM());
-      console.log(">> poolCash %s", poolCash);
-      console.log(">> poolManaged %s", poolManaged);
       if (shouldRebalance(poolCash, poolManaged)) {
         _rebalance(pId);
       }
@@ -286,7 +268,6 @@ abstract contract RewardsAssetManager is IAssetManager {
    * @param amount - the amount of tokens to withdraw back to the pool
    */
   function capitalOut(bytes32 pId, uint256 amount) external override withCorrectPool(pId) onlyPoolRebalancer {
-    console.log(">> capitalOut %s", amount);
     _capitalOut(amount);
   }
 }

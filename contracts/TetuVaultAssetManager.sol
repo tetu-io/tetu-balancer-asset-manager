@@ -36,7 +36,6 @@ contract TetuVaultAssetManager is RewardsAssetManager {
     address _rewardCollector
   ) RewardsAssetManager(balancerVault, IERC20(_underlying)) {
     require(_underlying != address(0), "zero underlying");
-    //    require(_underlying == ISmartVault(_tetuVault).underlying(), "wrong vault underlying");
     underlying = _underlying;
     tetuVault = _tetuVault;
     rewardCollector = _rewardCollector;
@@ -56,44 +55,28 @@ contract TetuVaultAssetManager is RewardsAssetManager {
    * @return the amount deposited
    */
   function _invest(uint256 amount, uint256) internal override returns (uint256) {
-    console.log("invest amount: %s", amount);
     uint256 balance = IERC20(underlying).balanceOf(address(this));
-    console.log("invest balance: %s", balance);
-
     if (amount < balance) {
       balance = amount;
     }
-    IERC20(underlying).approve(tetuVault, 0);
-    IERC20(underlying).approve(tetuVault, balance);
+    IERC20(underlying).safeIncreaseAllowance(tetuVault, balance);
 
     // invest to tetuVault
-    console.log("invest deposit");
-    console.log("underlying: %s", underlying);
-    console.log("tetuVault: %s", tetuVault);
-
     IERC4626(tetuVault).deposit(balance, address(this));
-    console.log("invest > AUM: %s", _getAUM());
-    console.log("invested %s of  %s", balance, underlying);
     return balance;
   }
 
   /**
-   * @dev Withdraws capital out of Iron
+   * @dev Withdraws capital out of TetuVault
    * @param amountUnderlying - the amount to withdraw
    * @return the number of tokens to return to the tetuVault
    */
   function _divest(uint256 amountUnderlying, uint256) internal override returns (uint256) {
-    amountUnderlying = amountUnderlying + 100;
-
     amountUnderlying = Math.min(amountUnderlying, _getAUM());
-    console.log("_divest request amountUnderlying: %s", amountUnderlying);
     if (amountUnderlying > 0) {
       IERC4626(tetuVault).withdraw(amountUnderlying, address(this), address(this));
     }
-    console.log("AUM: %s", _getAUM());
-    uint256 divested = IERC20(underlying).balanceOf(address(this));
-    console.log("divested %s of  %s", divested, underlying);
-    return divested;
+    return IERC20(underlying).balanceOf(address(this));
   }
 
   /**

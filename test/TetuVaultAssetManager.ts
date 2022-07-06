@@ -29,23 +29,24 @@ describe("TetuVaultAssetManager tests", function () {
   let tetuVault: MockTetuVaultV2
   let stablePool: TetuRelayedStablePool
   let poolId: string
-  let mockUsdc: MockERC20
-  let mockDai: MockERC20
   let mockWeth: MockERC20
   let balancerVault: Vault
+  const targetPercentage = BigNumber.from(8).mul(BigNumber.from(10).pow(17))
+  const upperCriticalPercentage = BigNumber.from(9).mul(BigNumber.from(10).pow(17))
+  const lowerCriticalPercentage = BigNumber.from(1).mul(BigNumber.from(10).pow(17))
 
-  const usdcInitialBalance = BigNumber.from(100).mul(BigNumber.from(10).pow(18))
+  const t0InitialBalance = BigNumber.from(100).mul(BigNumber.from(10).pow(18))
   const daiInitialBalance = BigNumber.from(100).mul(BigNumber.from(10).pow(18))
 
   const ampParam = 500
   const swapFee = "3000000000000000"
   const poolName = "Tetu stable pool"
   const poolSymbol = "TETU-USDC-DAI"
-
+  let tokens: MockERC20[]
   // const underlyingAddress = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 
   const initPool = async (tokens: MockERC20[]) => {
-    const initialBalances = [usdcInitialBalance, daiInitialBalance]
+    const initialBalances = [t0InitialBalance, daiInitialBalance]
     await tokens[0].approve(balancerVault.address, initialBalances[0])
     await tokens[1].approve(balancerVault.address, initialBalances[1])
     const JOIN_KIND_INIT = 0
@@ -85,25 +86,25 @@ describe("TetuVaultAssetManager tests", function () {
 
   before(async function () {
     ;[deployer, user, rewardCollector] = await ethers.getSigners()
-    const VaultFactory = await ethers.getContractFactory("MockTetuVaultV2")
     const USDC = await ethers.getContractFactory("MockERC20")
-    mockUsdc = await USDC.deploy("USD Coin (PoS)", "USDC", 6)
+    const mockUsdc = await USDC.deploy("USD Coin (PoS)", "USDC", 6)
     await mockUsdc.mint(deployer.address, BigNumber.from(Misc.largeApproval))
     await mockUsdc.mint(user.address, BigNumber.from(Misc.largeApproval))
-
-    tetuVault = await VaultFactory.deploy(mockUsdc.address, "TetuUSDC", "TetuUSDC", 18)
-
     const DAI = await ethers.getContractFactory("MockERC20")
-    mockDai = await DAI.deploy("(PoS) Dai Stablecoin", "DAI", 18)
+    const mockDai = await DAI.deploy("(PoS) Dai Stablecoin", "DAI", 18)
 
     const WETH = await ethers.getContractFactory("MockERC20")
     mockWeth = await WETH.deploy("WETH", "WETH", 18)
 
     await mockDai.mint(deployer.address, BigNumber.from(Misc.largeApproval))
     await mockDai.mint(user.address, BigNumber.from(Misc.largeApproval))
+    tokens = Misc.sortTokens([mockUsdc, mockDai])
   })
 
   beforeEach(async function () {
+    const VaultFactory = await ethers.getContractFactory("MockTetuVaultV2")
+    tetuVault = await VaultFactory.deploy(tokens[0].address, "TetuT0", "TetuT0", 18)
+
     const AuthFact = await ethers.getContractFactory("Authorizer")
     const authorizer = (await AuthFact.deploy(deployer.address)) as Authorizer
     const BalVaultFactory = await ethers.getContractFactory("Vault")
@@ -115,7 +116,7 @@ describe("TetuVaultAssetManager tests", function () {
     assetManager = (await TetuVaultAssetManagerFact.deploy(
       balancerVault.address,
       tetuVault.address,
-      mockUsdc.address,
+      tokens[0].address,
       rewardCollector.address
     )) as TetuVaultAssetManager
 
@@ -124,7 +125,7 @@ describe("TetuVaultAssetManager tests", function () {
       balancerVault.address,
       poolName,
       poolSymbol,
-      [mockUsdc.address, mockDai.address],
+      [tokens[0].address, tokens[1].address],
       ampParam,
       swapFee,
       "0",
@@ -139,16 +140,16 @@ describe("TetuVaultAssetManager tests", function () {
     await assetManager.initialize(poolId)
 
     const config = {
-      targetPercentage: BigNumber.from(8).mul(BigNumber.from(10).pow(17)),
-      upperCriticalPercentage: BigNumber.from(9).mul(BigNumber.from(10).pow(17)),
-      lowerCriticalPercentage: BigNumber.from(1).mul(BigNumber.from(10).pow(17))
+      targetPercentage: targetPercentage,
+      upperCriticalPercentage: upperCriticalPercentage,
+      lowerCriticalPercentage: lowerCriticalPercentage
     }
 
-    await stablePool.setAssetManagerPoolConfig(mockUsdc.address, Misc.encodeInvestmentConfig(config))
+    await stablePool.setAssetManagerPoolConfig(tokens[0].address, Misc.encodeInvestmentConfig(config))
     const investmentConfig = await assetManager.getInvestmentConfig(poolId)
-    expect(investmentConfig[0]).is.equal("800000000000000000")
-    expect(investmentConfig[1]).is.equal("900000000000000000")
-    expect(investmentConfig[2]).is.equal("100000000000000000")
+    expect(investmentConfig[0]).is.equal(targetPercentage)
+    expect(investmentConfig[1]).is.equal(upperCriticalPercentage)
+    expect(investmentConfig[2]).is.equal(lowerCriticalPercentage)
 
     // todo: real vault vs deployed
     // balancerVault = await ethers.getContractAt("IBVault", Misc.balancerVaultAddress)
@@ -177,42 +178,59 @@ describe("TetuVaultAssetManager tests", function () {
 
   describe("General tests", function () {
     it("Smoke test", async function () {
-      expect(await assetManager.underlying()).is.eq(mockUsdc.address)
+      expect(await assetManager.underlying()).is.eq(tokens[0].address)
       expect(await assetManager.tetuVault()).is.eq(tetuVault.address)
       expect(await assetManager.rewardCollector()).is.eq(rewardCollector.address)
+      expect(await assetManager.maxInvestableBalance(poolId)).is.eq(0)
+    })
+
+    it("Max investable balance tests", async function () {
+      await initPool(tokens)
+      const expectedToBeInvested = t0InitialBalance.mul(targetPercentage).div(BigNumber.from(10).pow(18))
+      expect(await assetManager.maxInvestableBalance(poolId)).is.eq(expectedToBeInvested)
+      await assetManager.rebalance(poolId, false)
+      expect(await assetManager.maxInvestableBalance(poolId)).is.eq(0)
+      const config = {
+        targetPercentage: targetPercentage.div(2),
+        upperCriticalPercentage: upperCriticalPercentage,
+        lowerCriticalPercentage: lowerCriticalPercentage
+      }
+      await stablePool.setAssetManagerPoolConfig(tokens[0].address, Misc.encodeInvestmentConfig(config))
+      expect(await assetManager.maxInvestableBalance(poolId)).is.eq(expectedToBeInvested.div(2).mul(-1))
     })
   })
 
   describe("Invest", function () {
     it("AM should be able to invest funds to the TetuVault", async function () {
-      const tokens = [mockUsdc, mockDai]
       await initPool(tokens)
 
-      const usdcToDeposit = BigNumber.from(10).mul(BigNumber.from(10).pow(18))
-      const daiToDeposit = BigNumber.from(0)
-      await deposit(user, tokens, [usdcToDeposit, daiToDeposit])
+      const t0ToDeposit = BigNumber.from(10).mul(BigNumber.from(10).pow(18))
+      const t1ToDeposit = BigNumber.from(10).mul(BigNumber.from(10).pow(18))
+      await deposit(user, tokens, [t0ToDeposit, t1ToDeposit])
 
       expect(await stablePool.balanceOf(user.address)).is.not.equal(0)
 
       await assetManager.rebalance(poolId, false)
-      const balances = await balancerVault.getPoolTokenInfo(poolId, mockUsdc.address)
+      const balances = await balancerVault.getPoolTokenInfo(poolId, tokens[0].address)
+      const expectedToBeInVault = t0InitialBalance
+        .add(t0ToDeposit)
+        .mul(targetPercentage)
+        .div(BigNumber.from(10).pow(18))
 
-      expect(balances[0]).is.equal(usdcInitialBalance.add(usdcToDeposit).div(2))
-      expect(balances[1]).is.equal(usdcInitialBalance.add(usdcToDeposit).div(2))
-
-      // 50.5 USDC should be in tetuVault
-      expect(await mockUsdc.balanceOf(tetuVault.address)).is.equal(usdcInitialBalance.add(usdcToDeposit).div(2))
+      const expectedToBeInvested = t0InitialBalance.add(t0ToDeposit).sub(expectedToBeInVault)
+      expect(balances[0]).is.equal(expectedToBeInvested)
+      expect(balances[1]).is.equal(expectedToBeInVault)
+      expect(await tokens[0].balanceOf(tetuVault.address)).is.equal(expectedToBeInVault)
     })
   })
 
   describe("Withdraw", function () {
     it("AM should be able to handle exit from pool when funds in vault is not enough", async function () {
-      const tokens = [mockUsdc, mockDai]
       await initPool(tokens)
-      const userUSDCBalanceBefore = await mockUsdc.balanceOf(user.address)
-      const usdcToDeposit = BigNumber.from(5).mul(BigNumber.from(10).pow(18))
-      const daiToDeposit = BigNumber.from(5).mul(BigNumber.from(10).pow(18))
-      await deposit(user, tokens, [usdcToDeposit, daiToDeposit])
+      const userT0BalanceBefore = await tokens[0].balanceOf(user.address)
+      const t0ToDeposit = BigNumber.from(5).mul(BigNumber.from(10).pow(18))
+      const t1ToDeposit = BigNumber.from(5).mul(BigNumber.from(10).pow(18))
+      await deposit(user, tokens, [t0ToDeposit, t1ToDeposit])
 
       expect(await stablePool.balanceOf(user.address)).is.not.equal(0)
 
@@ -236,11 +254,11 @@ describe("TetuVaultAssetManager tests", function () {
           userData: exitUserData,
           toInternalBalance: false
         },
-        [usdcToDeposit, 0]
+        [t0ToDeposit, 0]
       )
       const bptBalanceAfter = await stablePool.balanceOf(user.address)
-      const userUSDCBalanceAfter = await mockUsdc.balanceOf(user.address)
-      expect(userUSDCBalanceAfter).is.gt(userUSDCBalanceBefore)
+      const userT0BalanceAfter = await tokens[0].balanceOf(user.address)
+      expect(userT0BalanceAfter).is.gt(userT0BalanceBefore)
       expect(bptBalanceAfter).is.equal(0)
     })
   })

@@ -19,24 +19,24 @@ import "../interface/IERC4626.sol";
 contract MockTetuVaultV2 is IERC4626, ERC20 {
   using SafeERC20 for IERC20;
 
-  address public underlying;
+  IERC20 public asset;
 
   constructor(
-    address _underlying,
+    address _asset,
     string memory _name,
     string memory _symbol,
     uint8 _decimals)ERC20(_name, _symbol, _decimals)  {
-    underlying = _underlying;
+    asset = IERC20(_asset);
   }
 
   function deposit(uint assets, address receiver) external override returns (uint shares){
-    IERC20(underlying).safeTransferFrom(msg.sender, address(this), assets);
+    asset.safeTransferFrom(msg.sender, address(this), assets);
     _mint(receiver, assets);
     return assets;
   }
 
   function mint(uint shares, address receiver) external override returns (uint assets){
-    IERC20(underlying).safeTransferFrom(msg.sender, address(this), assets);
+    asset.safeTransferFrom(msg.sender, address(this), assets);
     _mint(receiver, assets);
     return shares;
   }
@@ -47,7 +47,7 @@ contract MockTetuVaultV2 is IERC4626, ERC20 {
     address owner
   ) external override returns (uint shares){
     _burn(owner, assets);
-    IERC20(underlying).safeTransfer(receiver, assets);
+    asset.safeTransfer(receiver, assets);
     return assets;
   }
 
@@ -57,43 +57,43 @@ contract MockTetuVaultV2 is IERC4626, ERC20 {
     address owner
   ) external override returns (uint assets){
     _burn(owner, shares);
-    IERC20(underlying).safeTransfer(receiver, shares);
+    asset.safeTransfer(receiver, shares);
     return shares;
   }
 
   function totalAssets() external view override returns (uint){
-    return IERC20(underlying).balanceOf(address(this));
+    return asset.balanceOf(address(this));
   }
 
-  function convertToShares(uint assets) external view override returns (uint){
+  function convertToShares(uint assets) external pure override returns (uint){
     return assets;
   }
 
-  function convertToAssets(uint shares) external view override returns (uint){
+  function convertToAssets(uint shares) external pure override returns (uint){
     return shares;
   }
 
-  function previewDeposit(uint assets) external view override returns (uint){
+  function previewDeposit(uint assets) external pure override returns (uint){
     return assets;
   }
 
-  function previewMint(uint shares) external view override returns (uint){
+  function previewMint(uint shares) external pure override returns (uint){
     return shares;
   }
 
-  function previewWithdraw(uint assets) external view override returns (uint){
+  function previewWithdraw(uint assets) external pure override returns (uint){
     return assets;
   }
 
-  function previewRedeem(uint shares) external view override returns (uint){
+  function previewRedeem(uint shares) external pure override returns (uint){
     return shares;
   }
 
-  function maxDeposit(address) external view override returns (uint){
+  function maxDeposit(address) external pure override returns (uint){
     return 1e18;
   }
 
-  function maxMint(address) external view override returns (uint){
+  function maxMint(address) external pure override returns (uint){
     return 1e18;
   }
 

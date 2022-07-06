@@ -22,7 +22,7 @@ contract RebalancingRelayer is IBasePoolRelayer {
   // We start at a non-zero value to make EIP2200 refunds lower, meaning there'll be a higher chance of them being
   // fully effective.
   bytes32 internal constant _EMPTY_CALLED_POOL =
-    bytes32(0x0000000000000000000000000000000000000000000000000000000000000001);
+  bytes32(0x0000000000000000000000000000000000000000000000000000000000000001);
 
   modifier rebalance(
     bytes32 poolId,
@@ -105,7 +105,7 @@ contract RebalancingRelayer is IBasePoolRelayer {
     }
   }
 
-  function _translateToIERC20(IAsset[] memory assets) internal view returns (IERC20[] memory) {
+  function _translateToIERC20(IAsset[] memory assets) internal pure returns (IERC20[] memory) {
     IERC20[] memory tokens = new IERC20[](assets.length);
     for (uint256 i = 0; i < assets.length; ++i) {
       tokens[i] = IERC20(address(assets[i]));

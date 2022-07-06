@@ -1,5 +1,6 @@
 import hre, { ethers } from "hardhat"
 import { BigNumber, BigNumberish, Contract } from "ethers"
+import { MockERC20 } from "../../typechain"
 
 export type InvestmentConfig = {
   targetPercentage: BigNumberish
@@ -45,11 +46,18 @@ export class Misc {
 
   public static encodeInvestmentConfig(config: InvestmentConfig): string {
     return ethers.utils.defaultAbiCoder.encode(
-      ['uint64', 'uint64', 'uint64'],
-      [BigNumber.from(config.targetPercentage), BigNumber.from(config.upperCriticalPercentage), BigNumber.from(config.lowerCriticalPercentage)]
-    );
+      ["uint64", "uint64", "uint64"],
+      [
+        BigNumber.from(config.targetPercentage),
+        BigNumber.from(config.upperCriticalPercentage),
+        BigNumber.from(config.lowerCriticalPercentage)
+      ]
+    )
   }
 
+  public static sortTokens(tokens: MockERC20[]) {
+    return tokens.sort((tokenA, tokenB) => (tokenA.address.toLowerCase() > tokenB.address.toLowerCase() ? 1 : -1))
+  }
 }
 
 function encodeJoinExitMockPool(amounts: BigNumberish[], dueProtocolFeeAmounts: BigNumberish[]): string {
