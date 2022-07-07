@@ -18,8 +18,6 @@ import "./third_party/balancer/IBVault.sol";
 import "./third_party/balancer/IAssetManager.sol";
 import "./third_party/balancer/IRelayedBasePool8.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title RewardsAssetManager
  * @dev RewardsAssetManager is owned by a single pool such that any
@@ -86,7 +84,7 @@ abstract contract RewardsAssetManager is IAssetManager {
   }
 
   function getPoolAddress() public view returns (address addr) {
-    uint256 shifted = uint256(_poolId) / 2 ** (8 * 12);
+    uint256 shifted = uint256(_poolId) / 2**(8 * 12);
     return address(uint160(shifted));
   }
 
@@ -105,9 +103,9 @@ abstract contract RewardsAssetManager is IAssetManager {
   }
 
   function _maxInvestableBalance(uint256 aum) internal view returns (int256) {
-    (uint256 poolCash, , ,) = getVault().getPoolTokenInfo(_poolId, getToken());
+    (uint256 poolCash, , , ) = getVault().getPoolTokenInfo(_poolId, getToken());
     // Calculate the managed portion of funds locally as the Vault is unaware of returns
-    return int256((poolCash + aum) * _config.targetPercentage / _CONFIG_PRECISION) - int256(aum);
+    return int256(((poolCash + aum) * _config.targetPercentage) / _CONFIG_PRECISION) - int256(aum);
   }
 
   // Reporting
@@ -184,7 +182,10 @@ abstract contract RewardsAssetManager is IAssetManager {
   function setConfig(bytes32 pId, bytes memory rawConfig) external override withCorrectPool(pId) onlyPoolContract {
     InvestmentConfig memory config = abi.decode(rawConfig, (InvestmentConfig));
 
-    require(config.upperCriticalPercentage <= _CONFIG_PRECISION, "Upper critical level must be less than or equal to 100%");
+    require(
+      config.upperCriticalPercentage <= _CONFIG_PRECISION,
+      "Upper critical level must be less than or equal to 100%"
+    );
     require(
       config.targetPercentage <= config.upperCriticalPercentage,
       "Target must be less than or equal to upper critical level"
@@ -203,17 +204,17 @@ abstract contract RewardsAssetManager is IAssetManager {
   }
 
   function getPoolBalances(bytes32 pId)
-  public
-  view
-  override
-  withCorrectPool(pId)
-  returns (uint256 poolCash, uint256 poolManaged)
+    public
+    view
+    override
+    withCorrectPool(pId)
+    returns (uint256 poolCash, uint256 poolManaged)
   {
     (poolCash, poolManaged) = _getPoolBalances(_getAUM());
   }
 
   function _getPoolBalances(uint256 aum) internal view returns (uint256 poolCash, uint256 poolManaged) {
-    (poolCash,,,) = getVault().getPoolTokenInfo(_poolId, getToken());
+    (poolCash, , , ) = getVault().getPoolTokenInfo(_poolId, getToken());
     // Calculate the managed portion of funds locally as the Vault is unaware of returns
     poolManaged = aum;
   }

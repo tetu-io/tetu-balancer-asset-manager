@@ -3,11 +3,15 @@ import chaiAsPromised from "chai-as-promised"
 import { solidity } from "ethereum-waffle"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { ethers } from "hardhat"
-import { IBVault, IVaultAuthorizer, MockERC20, RebalancingRelayer, TetuRelayedStablePool } from "../typechain"
+import {
+  IBVault,
+  IVaultAuthorizer,
+  MockERC20,
+  TetuGagueRewardingRebalancingRelayer,
+  TetuRelayedStablePool
+} from "../typechain"
 import { BigNumber } from "ethers"
 import { Misc } from "./utils/Misc"
-
-const hre = require("hardhat")
 
 const { expect } = chai
 chai.use(chaiAsPromised)
@@ -15,7 +19,7 @@ chai.use(solidity)
 
 describe("TetuStablePool tests", function () {
   let deployer: SignerWithAddress
-  let relayer: RebalancingRelayer
+  let relayer: TetuGagueRewardingRebalancingRelayer
   let user: SignerWithAddress
   let stablePool: TetuRelayedStablePool
   let mockUsdc: MockERC20
@@ -40,7 +44,7 @@ describe("TetuStablePool tests", function () {
     await mockDai.mint(deployer.address, BigNumber.from(Misc.largeApproval))
     await mockDai.mint(user.address, BigNumber.from(Misc.largeApproval))
 
-    const RelayerFact = await ethers.getContractFactory("RebalancingRelayer")
+    const RelayerFact = await ethers.getContractFactory("TetuGagueRewardingRebalancingRelayer")
     relayer = await RelayerFact.deploy(Misc.balancerVaultAddress)
   })
 

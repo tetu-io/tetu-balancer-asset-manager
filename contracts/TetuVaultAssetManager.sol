@@ -18,7 +18,7 @@ import "./interface/IERC4626.sol";
 import "./third_party/balancer/IBVault.sol";
 import "./RewardsAssetManager.sol";
 
-import "hardhat/console.sol";
+import "./interface/IGauge.sol";
 
 pragma solidity 0.8.4;
 
@@ -28,17 +28,20 @@ contract TetuVaultAssetManager is RewardsAssetManager {
   address public underlying;
   address public tetuVault;
   address public rewardCollector;
+  IGauge public gague;
 
   constructor(
     IBVault balancerVault,
     address _tetuVault,
     address _underlying,
-    address _rewardCollector
+    address _rewardCollector,
+    address _gague
   ) RewardsAssetManager(balancerVault, IERC20(_underlying)) {
     require(_underlying != address(0), "zero underlying");
     underlying = _underlying;
     tetuVault = _tetuVault;
     rewardCollector = _rewardCollector;
+    gague = IGauge(_gague);
   }
 
   /**
@@ -86,23 +89,22 @@ contract TetuVaultAssetManager is RewardsAssetManager {
     return IERC4626(tetuVault).maxWithdraw(address(this));
   }
 
-  /// @dev Claim all rewards from given tetuVault and send to pool/strategy
-  function claimRewards() public {
+  /// @dev Claim all rewards from given gague and send to rewardCollector
+  function claimRewards() external onlyPoolRebalancer {
     _claim();
   }
 
-  /// @dev Claim all rewards from given tetuVault and send to pool/strategy
-  function _claim() private {
-    //    IERC4626 sv = IERC4626(tetuVault);
-    //
-    //    for (uint256 i = 0; i < sv.rewardTokensLength(); i++) {
-    //      address rt = sv.rewardTokens()[i];
-    //      uint256 bal = IERC20(rt).balanceOf(address(this));
-    //      sv.getReward(rt);
-    //      uint256 claimed = IERC20(rt).balanceOf(address(this)) - bal;
-    //      if (claimed > 0) {
-    //        IERC20(rt).safeTransfer(getPoolAddress(), claimed);
-    //      }
-    //    }
+  /// @dev Claim all rewards from given gague and send to rewardCollector
+  function _claim() internal {
+    if (address(gague) != address(0) && rewardCollector != address(0)) {
+      gague.getAllRewards(address(tetuVault), address(this));
+      for (uint256 i = 0; i < gague.rewardTokensLength(address(tetuVault)); i++) {
+        IERC20 rt = IERC20(gague.rewardTokens(address(tetuVault), i));
+        uint256 bal = IERC20(rt).balanceOf(address(this));
+        if (bal > 0) {
+          rt.safeTransfer(rewardCollector, bal);
+        }
+      }
+    }
   }
 }

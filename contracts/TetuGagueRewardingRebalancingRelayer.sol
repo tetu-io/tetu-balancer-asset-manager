@@ -14,11 +14,11 @@
 
 pragma solidity 0.8.4;
 
-import "./third_party/balancer/IBasePoolRelayer8.sol";
 import "./third_party/balancer/IBVault.sol";
-import "./third_party/balancer/IAssetManager.sol";
+import "./interface/IGagueRewardingAssetManager.sol";
+import "./interface/IGagueRewardingPoolRelayer.sol";
 
-contract RebalancingRelayer is IBasePoolRelayer {
+contract TetuGagueRewardingRebalancingRelayer is IGagueRewardingPoolRelayer {
   // We start at a non-zero value to make EIP2200 refunds lower, meaning there'll be a higher chance of them being
   // fully effective.
   bytes32 internal constant _EMPTY_CALLED_POOL =
@@ -48,6 +48,18 @@ contract RebalancingRelayer is IBasePoolRelayer {
 
   function hasCalledPool(bytes32 poolId) external view override returns (bool) {
     return _calledPool == poolId;
+  }
+
+  //todo need to think if needs to be protected
+  function claimGagueRewards(bytes32 poolId) external override {
+    (IERC20[] memory tokens, ,) = vault.getPoolTokens(poolId);
+    for (uint256 i = 0; i < tokens.length; i++) {
+      (, , , address assetManager) = vault.getPoolTokenInfo(poolId, tokens[i]);
+
+      if (assetManager != address(0)) {
+        IGagueRewardingAssetManager(assetManager).claimRewards();
+      }
+    }
   }
 
   function joinPool(
@@ -80,12 +92,12 @@ contract RebalancingRelayer is IBasePoolRelayer {
         if (cash < cashNeeded) {
           // Withdraw the managed balance back to the pool to ensure that the cash covers the withdrawal
           // This will automatically update the vault with the most recent managed balance
-          IAssetManager(assetManager).capitalOut(poolId, cashNeeded - cash);
+          IGagueRewardingAssetManager(assetManager).capitalOut(poolId, cashNeeded - cash);
         } else {
           // We want to ensure that the pool knows about all asset manager returns
           // to avoid a new LP getting a share of returns earned before they joined.
           // We then update the vault with the current managed balance manually.
-          IAssetManager(assetManager).updateBalanceOfPool(poolId);
+          IGagueRewardingAssetManager(assetManager).updateBalanceOfPool(poolId);
         }
       }
     }
@@ -100,7 +112,7 @@ contract RebalancingRelayer is IBasePoolRelayer {
         // exploits should be enabled by allowing for this, and b) Pools trust their Asset Managers.
 
         // Do a non-forced rebalance
-        IAssetManager(assetManager).rebalance(poolId, false);
+        IGagueRewardingAssetManager(assetManager).rebalance(poolId, false);
       }
     }
   }

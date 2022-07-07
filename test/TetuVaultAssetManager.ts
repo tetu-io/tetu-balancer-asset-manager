@@ -6,8 +6,9 @@ import { ethers } from "hardhat"
 import {
   Authorizer,
   MockERC20,
+  MockGague,
   MockTetuVaultV2,
-  RebalancingRelayer,
+  TetuGagueRewardingRebalancingRelayer,
   TetuRelayedStablePool,
   TetuVaultAssetManager,
   Vault
@@ -23,14 +24,16 @@ chai.use(solidity)
 describe("TetuVaultAssetManager tests", function () {
   let deployer: SignerWithAddress
   let user: SignerWithAddress
-  let relayer: RebalancingRelayer
+  let relayer: TetuGagueRewardingRebalancingRelayer
   let rewardCollector: SignerWithAddress
   let assetManager: TetuVaultAssetManager
   let tetuVault: MockTetuVaultV2
   let stablePool: TetuRelayedStablePool
   let poolId: string
   let mockWeth: MockERC20
+  let mockRewardToken: MockERC20
   let balancerVault: Vault
+  let gague: MockGague
   const targetPercentage = BigNumber.from(8).mul(BigNumber.from(10).pow(17))
   const upperCriticalPercentage = BigNumber.from(9).mul(BigNumber.from(10).pow(17))
   const lowerCriticalPercentage = BigNumber.from(1).mul(BigNumber.from(10).pow(17))
@@ -43,7 +46,6 @@ describe("TetuVaultAssetManager tests", function () {
   const poolName = "Tetu stable pool"
   const poolSymbol = "TETU-USDC-DAI"
   let tokens: MockERC20[]
-  // const underlyingAddress = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 
   const initPool = async (tokens: MockERC20[]) => {
     const initialBalances = [t0InitialBalance, daiInitialBalance]
@@ -95,6 +97,8 @@ describe("TetuVaultAssetManager tests", function () {
 
     const WETH = await ethers.getContractFactory("MockERC20")
     mockWeth = await WETH.deploy("WETH", "WETH", 18)
+    const RT = await ethers.getContractFactory("MockERC20")
+    mockRewardToken = await RT.deploy("RT", "RT", 18)
 
     await mockDai.mint(deployer.address, BigNumber.from(Misc.largeApproval))
     await mockDai.mint(user.address, BigNumber.from(Misc.largeApproval))
@@ -105,11 +109,15 @@ describe("TetuVaultAssetManager tests", function () {
     const VaultFactory = await ethers.getContractFactory("MockTetuVaultV2")
     tetuVault = await VaultFactory.deploy(tokens[0].address, "TetuT0", "TetuT0", 18)
 
+    const GagueFact = await ethers.getContractFactory("MockGague")
+    gague = await GagueFact.deploy([mockRewardToken.address], [BigNumber.from("100")], tetuVault.address)
+    await mockRewardToken.mint(gague.address, BigNumber.from("150"))
+
     const AuthFact = await ethers.getContractFactory("Authorizer")
     const authorizer = (await AuthFact.deploy(deployer.address)) as Authorizer
     const BalVaultFactory = await ethers.getContractFactory("Vault")
     balancerVault = (await BalVaultFactory.deploy(authorizer.address, mockWeth.address, 0, 0)) as Vault
-    const RelayerFact = await ethers.getContractFactory("RebalancingRelayer")
+    const RelayerFact = await ethers.getContractFactory("TetuGagueRewardingRebalancingRelayer")
     relayer = await RelayerFact.deploy(balancerVault.address)
 
     const TetuVaultAssetManagerFact = await ethers.getContractFactory("TetuVaultAssetManager")
@@ -117,7 +125,8 @@ describe("TetuVaultAssetManager tests", function () {
       balancerVault.address,
       tetuVault.address,
       tokens[0].address,
-      rewardCollector.address
+      rewardCollector.address,
+      gague.address
     )) as TetuVaultAssetManager
 
     const TetuStablePoolFact = await ethers.getContractFactory("TetuRelayedStablePool")
@@ -151,22 +160,6 @@ describe("TetuVaultAssetManager tests", function () {
     expect(investmentConfig[1]).is.equal(upperCriticalPercentage)
     expect(investmentConfig[2]).is.equal(lowerCriticalPercentage)
 
-    // todo: real vault vs deployed
-    // balancerVault = await ethers.getContractAt("IBVault", Misc.balancerVaultAddress)
-
-    // const authorizer = (await ethers.getContractAt(
-    //   "IVaultAuthorizer",
-    //   Misc.balancerVaultAuthorizerAddress
-    // )) as IVaultAuthorizer
-
-    // await authorizer
-    //   .connect(await Misc.impersonate(Misc.balancerVaultAdminAddress))
-    //   .grantRole(actionJoin, relayer.address)
-    // await authorizer
-    //   .connect(await Misc.impersonate(Misc.balancerVaultAdminAddress))
-    //   .grantRole(actionExit, relayer.address)
-    //
-
     const actionJoin = await Misc.actionId(balancerVault, "joinPool")
     const actionExit = await Misc.actionId(balancerVault, "exitPool")
 
@@ -182,6 +175,7 @@ describe("TetuVaultAssetManager tests", function () {
       expect(await assetManager.tetuVault()).is.eq(tetuVault.address)
       expect(await assetManager.rewardCollector()).is.eq(rewardCollector.address)
       expect(await assetManager.maxInvestableBalance(poolId)).is.eq(0)
+      expect(await assetManager.gague()).is.eq(gague.address)
     })
 
     it("Max investable balance tests", async function () {
@@ -260,6 +254,16 @@ describe("TetuVaultAssetManager tests", function () {
       const userT0BalanceAfter = await tokens[0].balanceOf(user.address)
       expect(userT0BalanceAfter).is.gt(userT0BalanceBefore)
       expect(bptBalanceAfter).is.equal(0)
+    })
+  })
+
+  describe("Claim gague rewards", function () {
+    it("Relayer should be able to claim rewards", async function () {
+      const feeCollectorBalBefore = await mockRewardToken.balanceOf(rewardCollector.address)
+      await relayer.claimGagueRewards(poolId)
+      const feeCollectorBalAfter = await mockRewardToken.balanceOf(rewardCollector.address)
+      expect(feeCollectorBalAfter).is.gt(feeCollectorBalBefore)
+      expect(feeCollectorBalAfter).is.eq(BigNumber.from(100))
     })
   })
 })
