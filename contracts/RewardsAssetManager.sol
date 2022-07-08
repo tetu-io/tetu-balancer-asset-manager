@@ -1,22 +1,11 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.4;
 
 import "./third_party/balancer/IBVault.sol";
 import "./third_party/balancer/IAssetManager.sol";
 import "./third_party/balancer/IRelayedBasePool8.sol";
+import "@tetu_io/tetu-contracts/contracts/openzeppelin/SafeERC20.sol";
 
 /**
  * @title RewardsAssetManager
@@ -27,6 +16,7 @@ import "./third_party/balancer/IRelayedBasePool8.sol";
  */
 
 abstract contract RewardsAssetManager is IAssetManager {
+  using SafeERC20 for IERC20;
   uint256 private constant _CONFIG_PRECISION = 1e18;
   IBVault private immutable _vault;
   IERC20 private immutable _token;
@@ -45,7 +35,7 @@ abstract contract RewardsAssetManager is IAssetManager {
   event InvestmentConfigSet(uint64 targetPercentage, uint64 lowerCriticalPercentage, uint64 upperCriticalPercentage);
 
   constructor(IBVault vault, IERC20 token) {
-    token.approve(address(vault), type(uint256).max);
+    token.safeApprove(address(vault), type(uint256).max);
 
     _vault = vault;
     _token = token;
@@ -84,7 +74,7 @@ abstract contract RewardsAssetManager is IAssetManager {
   }
 
   function getPoolAddress() public view returns (address addr) {
-    uint256 shifted = uint256(_poolId) / 2**(8 * 12);
+    uint256 shifted = uint256(_poolId) / 2 ** (8 * 12);
     return address(uint160(shifted));
   }
 
@@ -97,19 +87,18 @@ abstract contract RewardsAssetManager is IAssetManager {
   }
 
   // Investment configuration
-
-  function maxInvestableBalance(bytes32 pId) public view override withCorrectPool(pId) returns (int256) {
+  function maxInvestableBalance(bytes32 pId) external view override withCorrectPool(pId) returns (int256) {
     return _maxInvestableBalance(_getAUM());
   }
 
   function _maxInvestableBalance(uint256 aum) internal view returns (int256) {
-    (uint256 poolCash, , , ) = getVault().getPoolTokenInfo(_poolId, getToken());
+    (uint256 poolCash, , ,) = getVault().getPoolTokenInfo(_poolId, getToken());
     // Calculate the managed portion of funds locally as the Vault is unaware of returns
     return int256(((poolCash + aum) * _config.targetPercentage) / _CONFIG_PRECISION) - int256(aum);
   }
 
   // Reporting
-  function updateBalanceOfPool(bytes32 pId) public override withCorrectPool(pId) {
+  function updateBalanceOfPool(bytes32 pId) external override withCorrectPool(pId) {
     uint256 managedBalance = _getAUM();
 
     IBVault.PoolBalanceOp memory transfer = IBVault.PoolBalanceOp(
@@ -173,7 +162,7 @@ abstract contract RewardsAssetManager is IAssetManager {
    */
   function _divest(uint256 amount, uint256 aum) internal virtual returns (uint256);
 
-  function getAUM(bytes32 pId) public view virtual override withCorrectPool(pId) returns (uint256) {
+  function getAUM(bytes32 pId) external view virtual override withCorrectPool(pId) returns (uint256) {
     return _getAUM();
   }
 
@@ -204,17 +193,17 @@ abstract contract RewardsAssetManager is IAssetManager {
   }
 
   function getPoolBalances(bytes32 pId)
-    public
-    view
-    override
-    withCorrectPool(pId)
-    returns (uint256 poolCash, uint256 poolManaged)
+  external
+  view
+  override
+  withCorrectPool(pId)
+  returns (uint256 poolCash, uint256 poolManaged)
   {
     (poolCash, poolManaged) = _getPoolBalances(_getAUM());
   }
 
   function _getPoolBalances(uint256 aum) internal view returns (uint256 poolCash, uint256 poolManaged) {
-    (poolCash, , , ) = getVault().getPoolTokenInfo(_poolId, getToken());
+    (poolCash,,,) = getVault().getPoolTokenInfo(_poolId, getToken());
     // Calculate the managed portion of funds locally as the Vault is unaware of returns
     poolManaged = aum;
   }

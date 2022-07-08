@@ -1,16 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// SPDX-License-Identifier: MIT
 
 import "@tetu_io/tetu-contracts/contracts/openzeppelin/SafeERC20.sol";
 import "@tetu_io/tetu-contracts/contracts/openzeppelin/Math.sol";
@@ -38,6 +26,8 @@ contract TetuVaultAssetManager is RewardsAssetManager {
     address _gague
   ) RewardsAssetManager(balancerVault, IERC20(_underlying)) {
     require(_underlying != address(0), "zero underlying");
+    require(_tetuVault != address(0), "zero tetuVault");
+    require(_rewardCollector != address(0), "zero _rewardCollector");
     underlying = _underlying;
     tetuVault = _tetuVault;
     rewardCollector = _rewardCollector;
@@ -48,7 +38,8 @@ contract TetuVaultAssetManager is RewardsAssetManager {
    * @dev Should be called in same transaction as deployment through a factory contract
    * @param poolId - the id of the pool
    */
-  function initialize(bytes32 poolId) public {
+  //todo add factory
+  function initialize(bytes32 poolId) external {
     _initialize(poolId);
   }
 
@@ -58,15 +49,19 @@ contract TetuVaultAssetManager is RewardsAssetManager {
    * @return the amount deposited
    */
   function _invest(uint256 amount, uint256) internal override returns (uint256) {
-    uint256 balance = IERC20(underlying).balanceOf(address(this));
-    if (amount < balance) {
-      balance = amount;
-    }
-    IERC20(underlying).safeIncreaseAllowance(tetuVault, balance);
+    if (amount > 0) {
+      uint256 balance = IERC20(underlying).balanceOf(address(this));
+      if (amount < balance) {
+        balance = amount;
+      }
+      IERC20(underlying).safeIncreaseAllowance(tetuVault, balance);
 
-    // invest to tetuVault
-    IERC4626(tetuVault).deposit(balance, address(this));
-    return balance;
+      // invest to tetuVault
+      uint256 shares = IERC4626(tetuVault).deposit(balance, address(this));
+      require(shares > 0, "AM should receive shares after the deposit");
+      return balance;
+    }
+    return 0;
   }
 
   /**
@@ -77,7 +72,8 @@ contract TetuVaultAssetManager is RewardsAssetManager {
   function _divest(uint256 amountUnderlying, uint256) internal override returns (uint256) {
     amountUnderlying = Math.min(amountUnderlying, _getAUM());
     if (amountUnderlying > 0) {
-      IERC4626(tetuVault).withdraw(amountUnderlying, address(this), address(this));
+      uint256 shares = IERC4626(tetuVault).withdraw(amountUnderlying, address(this), address(this));
+      require(shares > 0, "AM should receive shares after the deposit");
     }
     return IERC20(underlying).balanceOf(address(this));
   }
