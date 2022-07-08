@@ -10,7 +10,7 @@ contract TetuGagueRewardingRebalancingRelayer is IGagueRewardingPoolRelayer {
   // We start at a non-zero value to make EIP2200 refunds lower, meaning there'll be a higher chance of them being
   // fully effective.
   bytes32 internal constant _EMPTY_CALLED_POOL =
-  bytes32(0x0000000000000000000000000000000000000000000000000000000000000001);
+    bytes32(0x0000000000000000000000000000000000000000000000000000000000000001);
 
   modifier rebalance(
     bytes32 poolId,
@@ -40,7 +40,7 @@ contract TetuGagueRewardingRebalancingRelayer is IGagueRewardingPoolRelayer {
 
   //todo need to think if needs to be protected
   function claimGagueRewards(bytes32 poolId) external override {
-    (IERC20[] memory tokens, ,) = vault.getPoolTokens(poolId);
+    (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
     for (uint256 i = 0; i < tokens.length; i++) {
       (, , , address assetManager) = vault.getPoolTokenInfo(poolId, tokens[i]);
 

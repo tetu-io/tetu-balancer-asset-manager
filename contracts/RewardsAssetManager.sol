@@ -74,7 +74,7 @@ abstract contract RewardsAssetManager is IAssetManager {
   }
 
   function getPoolAddress() public view returns (address addr) {
-    uint256 shifted = uint256(_poolId) / 2 ** (8 * 12);
+    uint256 shifted = uint256(_poolId) / 2**(8 * 12);
     return address(uint160(shifted));
   }
 
@@ -92,7 +92,7 @@ abstract contract RewardsAssetManager is IAssetManager {
   }
 
   function _maxInvestableBalance(uint256 aum) internal view returns (int256) {
-    (uint256 poolCash, , ,) = getVault().getPoolTokenInfo(_poolId, getToken());
+    (uint256 poolCash, , , ) = getVault().getPoolTokenInfo(_poolId, getToken());
     // Calculate the managed portion of funds locally as the Vault is unaware of returns
     return int256(((poolCash + aum) * _config.targetPercentage) / _CONFIG_PRECISION) - int256(aum);
   }
@@ -193,17 +193,17 @@ abstract contract RewardsAssetManager is IAssetManager {
   }
 
   function getPoolBalances(bytes32 pId)
-  external
-  view
-  override
-  withCorrectPool(pId)
-  returns (uint256 poolCash, uint256 poolManaged)
+    external
+    view
+    override
+    withCorrectPool(pId)
+    returns (uint256 poolCash, uint256 poolManaged)
   {
     (poolCash, poolManaged) = _getPoolBalances(_getAUM());
   }
 
   function _getPoolBalances(uint256 aum) internal view returns (uint256 poolCash, uint256 poolManaged) {
-    (poolCash,,,) = getVault().getPoolTokenInfo(_poolId, getToken());
+    (poolCash, , , ) = getVault().getPoolTokenInfo(_poolId, getToken());
     // Calculate the managed portion of funds locally as the Vault is unaware of returns
     poolManaged = aum;
   }
