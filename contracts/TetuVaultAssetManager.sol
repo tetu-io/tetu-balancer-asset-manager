@@ -58,7 +58,8 @@ contract TetuVaultAssetManager is RewardsAssetManager {
     IERC20(underlying).safeIncreaseAllowance(tetuVault, balance);
 
     // invest to tetuVault
-    uint256 shares = IERC4626(tetuVault).deposit(balance, address(this));
+    IERC4626(tetuVault).deposit(balance, address(this));
+    uint256 shares = IERC20(tetuVault).balanceOf(address(this));
     require(shares > 0, "AM should receive shares after the deposit");
     return balance;
   }
@@ -66,15 +67,21 @@ contract TetuVaultAssetManager is RewardsAssetManager {
   /**
    * @dev Withdraws capital out of TetuVault
    * @param amountUnderlying - the amount to withdraw
-   * @return the number of tokens to return to the tetuVault
+   * @return the number of tokens to return to the balancerVault
    */
   function _divest(uint256 amountUnderlying, uint256) internal override returns (uint256) {
+    console.log("_divest amountUnderlying: %s", amountUnderlying);
     amountUnderlying = Math.min(amountUnderlying, _getAUM());
+    uint256 existingBalance = IERC20(underlying).balanceOf(address(this));
     if (amountUnderlying > 0) {
-      uint256 shares = IERC4626(tetuVault).withdraw(amountUnderlying, address(this), address(this));
-      require(shares > 0, "AM should receive shares after the deposit");
+      IERC4626(tetuVault).withdraw(amountUnderlying, address(this), address(this));
+      uint256 newBalance = IERC20(underlying).balanceOf(address(this));
+      uint256 divested = newBalance - existingBalance;
+      console.log("devested: %s", divested);
+      require(divested > 0, "AM should receive requested tokens after the withdraw");
+      return divested;
     }
-    return IERC20(underlying).balanceOf(address(this));
+    return 0;
   }
 
   /**

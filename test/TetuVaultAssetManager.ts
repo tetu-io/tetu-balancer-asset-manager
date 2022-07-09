@@ -86,28 +86,9 @@ describe("TetuVaultAssetManager tests", function () {
     await relayer.connect(depositor).joinPool(poolId, depositor.address, joinPoolRequest)
   }
 
-  before(async function () {
-    ;[deployer, user, rewardCollector] = await ethers.getSigners()
-    const USDC = await ethers.getContractFactory("MockERC20")
-    const mockUsdc = await USDC.deploy("USD Coin (PoS)", "USDC", 18)
-    await mockUsdc.mint(deployer.address, BigNumber.from(Misc.largeApproval))
-    await mockUsdc.mint(user.address, BigNumber.from(Misc.largeApproval))
-    const DAI = await ethers.getContractFactory("MockERC20")
-    const mockDai = await DAI.deploy("(PoS) Dai Stablecoin", "DAI", 18)
-
-    const WETH = await ethers.getContractFactory("MockERC20")
-    mockWeth = await WETH.deploy("WETH", "WETH", 18)
-    const RT = await ethers.getContractFactory("MockERC20")
-    mockRewardToken = await RT.deploy("RT", "RT", 18)
-
-    await mockDai.mint(deployer.address, BigNumber.from(Misc.largeApproval))
-    await mockDai.mint(user.address, BigNumber.from(Misc.largeApproval))
-    tokens = Misc.sortTokens([mockUsdc, mockDai])
-  })
-
-  beforeEach(async function () {
+  const setupTestCase = async (isReturnShares = true, isReturnTokens = true, isGage = true) => {
     const VaultFactory = await ethers.getContractFactory("MockTetuVaultV2")
-    tetuVault = await VaultFactory.deploy(tokens[0].address, "TetuT0", "TetuT0", 18)
+    tetuVault = await VaultFactory.deploy(tokens[0].address, "TetuT0", "TetuT0", 18, isReturnShares, isReturnTokens)
 
     const GagueFact = await ethers.getContractFactory("MockGague")
     gague = await GagueFact.deploy([mockRewardToken.address], [BigNumber.from("100")], tetuVault.address)
@@ -126,7 +107,7 @@ describe("TetuVaultAssetManager tests", function () {
       tetuVault.address,
       tokens[0].address,
       rewardCollector.address,
-      gague.address
+      isGage ? gague.address : ethers.constants.AddressZero
     )) as TetuVaultAssetManager
 
     const TetuStablePoolFact = await ethers.getContractFactory("TetuRelayedStablePool")
@@ -167,6 +148,29 @@ describe("TetuVaultAssetManager tests", function () {
     await authorizer.grantRole(actionExit, relayer.address)
 
     await balancerVault.connect(user).setRelayerApproval(user.address, relayer.address, true)
+  }
+
+  before(async function () {
+    ;[deployer, user, rewardCollector] = await ethers.getSigners()
+    const USDC = await ethers.getContractFactory("MockERC20")
+    const mockUsdc = await USDC.deploy("USD Coin (PoS)", "USDC", 18)
+    await mockUsdc.mint(deployer.address, BigNumber.from(Misc.largeApproval))
+    await mockUsdc.mint(user.address, BigNumber.from(Misc.largeApproval))
+    const DAI = await ethers.getContractFactory("MockERC20")
+    const mockDai = await DAI.deploy("(PoS) Dai Stablecoin", "DAI", 18)
+
+    const WETH = await ethers.getContractFactory("MockERC20")
+    mockWeth = await WETH.deploy("WETH", "WETH", 18)
+    const RT = await ethers.getContractFactory("MockERC20")
+    mockRewardToken = await RT.deploy("RT", "RT", 18)
+
+    await mockDai.mint(deployer.address, BigNumber.from(Misc.largeApproval))
+    await mockDai.mint(user.address, BigNumber.from(Misc.largeApproval))
+    tokens = Misc.sortTokens([mockUsdc, mockDai])
+  })
+
+  beforeEach(async function () {
+    await setupTestCase()
   })
 
   describe("General tests", function () {
@@ -271,6 +275,27 @@ describe("TetuVaultAssetManager tests", function () {
           gague.address
         )
       ).is.rejectedWith("zero rewardCollector")
+    })
+
+    it("AM should not invest in tetu vault if vault not returns receipt tokens", async function () {
+      await setupTestCase(false, true)
+      await initPool(tokens)
+      await expect(assetManager.rebalance(poolId, false)).is.rejectedWith("AM should receive shares after the deposit")
+    })
+    it("AM should not withdraw from tetu vault if vault not returns tokens", async function () {
+      await setupTestCase(true, false)
+      await initPool(tokens)
+      await assetManager.rebalance(poolId, false)
+
+      const config = {
+        targetPercentage: BigNumber.from(0),
+        upperCriticalPercentage: BigNumber.from(0),
+        lowerCriticalPercentage: BigNumber.from(0)
+      }
+      await stablePool.setAssetManagerPoolConfig(tokens[0].address, Misc.encodeInvestmentConfig(config))
+      await expect(assetManager.rebalance(poolId, false)).is.rejectedWith(
+        "AM should receive requested tokens after the withdraw"
+      )
     })
   })
 
@@ -468,6 +493,13 @@ describe("TetuVaultAssetManager tests", function () {
       const feeCollectorBalAfter = await mockRewardToken.balanceOf(rewardCollector.address)
       expect(feeCollectorBalAfter).is.gt(feeCollectorBalBefore)
       expect(feeCollectorBalAfter).is.eq(BigNumber.from(100))
+    })
+
+    it("Relayer should process claim transaction with empty gague", async function () {
+      await setupTestCase(true, true, false)
+      await relayer.claimGagueRewards(poolId)
+      const feeCollectorBalAfter = await mockRewardToken.balanceOf(rewardCollector.address)
+      expect(feeCollectorBalAfter).is.eq(BigNumber.from(0))
     })
   })
 })
