@@ -6,6 +6,7 @@ import "./third_party/balancer/IBVault.sol";
 import "./third_party/balancer/IAssetManager.sol";
 import "./third_party/balancer/IRelayedBasePool8.sol";
 import "@tetu_io/tetu-contracts/contracts/openzeppelin/SafeERC20.sol";
+import "hardhat/console.sol";
 
 /**
  * @title RewardsAssetManager
@@ -35,6 +36,9 @@ abstract contract RewardsAssetManager is IAssetManager {
   event InvestmentConfigSet(uint64 targetPercentage, uint64 lowerCriticalPercentage, uint64 upperCriticalPercentage);
 
   constructor(IBVault vault, IERC20 token) {
+    require(address(token) != address(0), "zero token");
+    require(address(vault) != address(0), "zero balancer vault");
+
     token.safeApprove(address(vault), type(uint256).max);
 
     _vault = vault;
@@ -55,7 +59,7 @@ abstract contract RewardsAssetManager is IAssetManager {
   }
 
   modifier withCorrectPool(bytes32 pId) {
-    require(pId == _poolId, "SinglePoolAssetManager called with incorrect poolId");
+    require(pId == _poolId, "AssetManager called with incorrect poolId");
     _;
   }
 
@@ -228,6 +232,8 @@ abstract contract RewardsAssetManager is IAssetManager {
     InvestmentConfig memory config = _config;
 
     uint256 targetInvestment = ((poolCash + poolManaged) * config.targetPercentage) / _CONFIG_PRECISION;
+    console.log("_targetInvestment: %s", targetInvestment);
+    console.log("_poolManaged: %s", poolManaged);
     if (targetInvestment > poolManaged) {
       // Pool is under-invested so add more funds
       uint256 rebalanceAmount = targetInvestment - poolManaged;
@@ -235,6 +241,7 @@ abstract contract RewardsAssetManager is IAssetManager {
     } else {
       // Pool is over-invested so remove some funds
       uint256 rebalanceAmount = poolManaged - targetInvestment;
+      console.log("rebalanceAmount: %s", rebalanceAmount);
       _capitalOut(rebalanceAmount);
     }
 

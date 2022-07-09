@@ -8,6 +8,8 @@ import "./RewardsAssetManager.sol";
 
 import "./interface/IGauge.sol";
 
+import "hardhat/console.sol";
+
 pragma solidity 0.8.4;
 
 contract TetuVaultAssetManager is RewardsAssetManager {
@@ -25,9 +27,8 @@ contract TetuVaultAssetManager is RewardsAssetManager {
     address _rewardCollector,
     address _gague
   ) RewardsAssetManager(balancerVault, IERC20(_underlying)) {
-    require(_underlying != address(0), "zero underlying");
-    require(_tetuVault != address(0), "zero tetuVault");
-    require(_rewardCollector != address(0), "zero _rewardCollector");
+    require(_tetuVault != address(0), "zero tetu vault");
+    require(_rewardCollector != address(0), "zero rewardCollector");
     underlying = _underlying;
     tetuVault = _tetuVault;
     rewardCollector = _rewardCollector;
@@ -49,19 +50,17 @@ contract TetuVaultAssetManager is RewardsAssetManager {
    * @return the amount deposited
    */
   function _invest(uint256 amount, uint256) internal override returns (uint256) {
-    if (amount > 0) {
-      uint256 balance = IERC20(underlying).balanceOf(address(this));
-      if (amount < balance) {
-        balance = amount;
-      }
-      IERC20(underlying).safeIncreaseAllowance(tetuVault, balance);
-
-      // invest to tetuVault
-      uint256 shares = IERC4626(tetuVault).deposit(balance, address(this));
-      require(shares > 0, "AM should receive shares after the deposit");
-      return balance;
+    console.log("_invest amount: %s", amount);
+    uint256 balance = IERC20(underlying).balanceOf(address(this));
+    if (amount < balance) {
+      balance = amount;
     }
-    return 0;
+    IERC20(underlying).safeIncreaseAllowance(tetuVault, balance);
+
+    // invest to tetuVault
+    uint256 shares = IERC4626(tetuVault).deposit(balance, address(this));
+    require(shares > 0, "AM should receive shares after the deposit");
+    return balance;
   }
 
   /**

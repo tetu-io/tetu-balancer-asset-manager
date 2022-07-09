@@ -89,7 +89,7 @@ describe("TetuVaultAssetManager tests", function () {
   before(async function () {
     ;[deployer, user, rewardCollector] = await ethers.getSigners()
     const USDC = await ethers.getContractFactory("MockERC20")
-    const mockUsdc = await USDC.deploy("USD Coin (PoS)", "USDC", 6)
+    const mockUsdc = await USDC.deploy("USD Coin (PoS)", "USDC", 18)
     await mockUsdc.mint(deployer.address, BigNumber.from(Misc.largeApproval))
     await mockUsdc.mint(user.address, BigNumber.from(Misc.largeApproval))
     const DAI = await ethers.getContractFactory("MockERC20")
@@ -192,6 +192,86 @@ describe("TetuVaultAssetManager tests", function () {
       await stablePool.setAssetManagerPoolConfig(tokens[0].address, Misc.encodeInvestmentConfig(config))
       expect(await assetManager.maxInvestableBalance(poolId)).is.eq(expectedToBeInvested.div(2).mul(-1))
     })
+
+    it("Only rebalancer can call capitalOut from AM", async function () {
+      await expect(assetManager.capitalOut(poolId, "100")).is.rejectedWith("Only callable by authorized rebalancer")
+    })
+
+    it("Only real poolID allowed for maxInvestableBalance", async function () {
+      const nonExistingPoolId = "0xc11111111111111111175d088814bf32b1f5d7c9000200000000000000000000"
+      await expect(assetManager.updateBalanceOfPool(nonExistingPoolId)).is.rejectedWith(
+        "AssetManager called with incorrect poolId"
+      )
+    })
+
+    it("Initialize can be call only once", async function () {
+      await expect(assetManager.initialize(poolId)).is.rejectedWith("Already initialised")
+    })
+
+    it("poolID can't be empty during the initialization", async function () {
+      const TetuVaultAssetManagerFact = await ethers.getContractFactory("TetuVaultAssetManager")
+      const assetManager = (await TetuVaultAssetManagerFact.deploy(
+        balancerVault.address,
+        tetuVault.address,
+        tokens[0].address,
+        rewardCollector.address,
+        gague.address
+      )) as TetuVaultAssetManager
+      const nonExistingPoolId = "0x0000000000000000000000000000000000000000000000000000000000000000"
+      await expect(assetManager.initialize(nonExistingPoolId)).is.rejectedWith("Pool id cannot be empty")
+    })
+
+    it("underlying can't be empty during the initialization", async function () {
+      const TetuVaultAssetManagerFact = await ethers.getContractFactory("TetuVaultAssetManager")
+      await expect(
+        TetuVaultAssetManagerFact.deploy(
+          balancerVault.address,
+          tetuVault.address,
+          ethers.constants.AddressZero,
+          rewardCollector.address,
+          gague.address
+        )
+      ).is.rejectedWith("zero token")
+    })
+
+    it("Balancer vault can't be empty during the initialization", async function () {
+      const TetuVaultAssetManagerFact = await ethers.getContractFactory("TetuVaultAssetManager")
+      await expect(
+        TetuVaultAssetManagerFact.deploy(
+          ethers.constants.AddressZero,
+          tetuVault.address,
+          tokens[0].address,
+          rewardCollector.address,
+          gague.address
+        )
+      ).is.rejectedWith("zero balancer vault")
+    })
+
+    it("Tetu vault can't be empty during the initialization", async function () {
+      const TetuVaultAssetManagerFact = await ethers.getContractFactory("TetuVaultAssetManager")
+      await expect(
+        TetuVaultAssetManagerFact.deploy(
+          balancerVault.address,
+          ethers.constants.AddressZero,
+          tokens[0].address,
+          rewardCollector.address,
+          gague.address
+        )
+      ).is.rejectedWith("zero tetu vault")
+    })
+
+    it("rewardCollector can't be empty during the initialization", async function () {
+      const TetuVaultAssetManagerFact = await ethers.getContractFactory("TetuVaultAssetManager")
+      await expect(
+        TetuVaultAssetManagerFact.deploy(
+          balancerVault.address,
+          tetuVault.address,
+          tokens[0].address,
+          ethers.constants.AddressZero,
+          gague.address
+        )
+      ).is.rejectedWith("zero rewardCollector")
+    })
   })
 
   describe("Invest", function () {
@@ -206,37 +286,96 @@ describe("TetuVaultAssetManager tests", function () {
 
       await assetManager.rebalance(poolId, false)
       const balances = await balancerVault.getPoolTokenInfo(poolId, tokens[0].address)
-      const expectedToBeInVault = t0InitialBalance
+      const expectedToBeInTetuVault = t0InitialBalance
         .add(t0ToDeposit)
         .mul(targetPercentage)
         .div(BigNumber.from(10).pow(18))
 
-      const expectedToBeInvested = t0InitialBalance.add(t0ToDeposit).sub(expectedToBeInVault)
-      expect(balances[0]).is.equal(expectedToBeInvested)
-      expect(balances[1]).is.equal(expectedToBeInVault)
-      expect(await tokens[0].balanceOf(tetuVault.address)).is.equal(expectedToBeInVault)
+      const expectedToBeInBalVault = t0InitialBalance.add(t0ToDeposit).sub(expectedToBeInTetuVault)
+
+      expect(await assetManager.getAUM(poolId)).is.eq(expectedToBeInTetuVault)
+
+      let poolCash
+      let poolManaged
+      ;[poolCash, poolManaged] = await assetManager.getPoolBalances(poolId)
+      expect(poolCash).is.eq(expectedToBeInBalVault)
+      expect(poolManaged).is.eq(expectedToBeInTetuVault)
+
+      expect(balances[0]).is.equal(expectedToBeInBalVault)
+      expect(balances[1]).is.equal(expectedToBeInTetuVault)
+      expect(await tokens[0].balanceOf(tetuVault.address)).is.equal(expectedToBeInTetuVault)
+    })
+  })
+
+  describe("Rebalance", function () {
+    it("AM should be able to force rebalance", async function () {
+      await initPool(tokens)
+      const expectedToBeControlledByAM = t0InitialBalance.mul(targetPercentage).div(BigNumber.from(10).pow(18))
+      await assetManager.rebalance(poolId, false)
+      expect(await assetManager.getAUM(poolId)).is.eq(expectedToBeControlledByAM)
+      const t0ToDeposit = BigNumber.from(10).mul(BigNumber.from(10).pow(18))
+      const t1ToDeposit = BigNumber.from(10).mul(BigNumber.from(10).pow(18))
+      await deposit(user, tokens, [t0ToDeposit, t1ToDeposit])
+
+      // this call should not change the AUM because deposit is in allowed range
+      await assetManager.rebalance(poolId, false)
+      expect(await assetManager.getAUM(poolId)).is.eq(expectedToBeControlledByAM)
+      // but force should
+      await assetManager.rebalance(poolId, true)
+
+      const expectedToBeControlledByAMAfterDeposit = t0InitialBalance
+        .add(t0ToDeposit)
+        .mul(targetPercentage)
+        .div(BigNumber.from(10).pow(18))
+      expect(await assetManager.getAUM(poolId)).is.eq(expectedToBeControlledByAMAfterDeposit)
+    })
+
+    it("Force rebalance should work properly in no rebalance needed", async function () {
+      await initPool(tokens)
+      await assetManager.rebalance(poolId, false)
+      let poolCash1
+      let poolManaged1
+      ;[poolCash1, poolManaged1] = await assetManager.getPoolBalances(poolId)
+
+      await assetManager.rebalance(poolId, true)
+      let poolCash2
+      let poolManaged2
+      ;[poolCash2, poolManaged2] = await assetManager.getPoolBalances(poolId)
+      expect(poolCash1).is.eq(poolCash2)
+      expect(poolManaged1).is.eq(poolManaged2)
+    })
+
+    it("AM should properly handle extra tokens", async function () {
+      await initPool(tokens)
+      const extraTokens = BigNumber.from(100)
+      await tokens[0].transfer(assetManager.address, extraTokens)
+      await assetManager.rebalance(poolId, false)
+      expect(await tokens[0].balanceOf(assetManager.address)).is.eq(extraTokens)
     })
   })
 
   describe("Withdraw", function () {
     it("AM should be able to handle exit from pool when funds in vault is not enough", async function () {
       await initPool(tokens)
-      const userT0BalanceBefore = await tokens[0].balanceOf(user.address)
-      const t0ToDeposit = BigNumber.from(5).mul(BigNumber.from(10).pow(18))
-      const t1ToDeposit = BigNumber.from(5).mul(BigNumber.from(10).pow(18))
+      const t0ToDeposit = BigNumber.from(30).mul(BigNumber.from(10).pow(18))
+      const t1ToDeposit = BigNumber.from(30).mul(BigNumber.from(10).pow(18))
       await deposit(user, tokens, [t0ToDeposit, t1ToDeposit])
 
       expect(await stablePool.balanceOf(user.address)).is.not.equal(0)
 
       await assetManager.rebalance(poolId, false)
 
-      const bptBalanceBefore = await stablePool.balanceOf(user.address)
+      let poolCash
+      ;[poolCash] = await assetManager.getPoolBalances(poolId)
 
-      const EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0
-      const exitTokenIndex = 0
+      const bptBalanceBefore = await stablePool.balanceOf(user.address)
+      const token0BalBefore = await tokens[0].balanceOf(user.address)
+
+      const token0ToWithdraw = poolCash.add(BigNumber.from(10))
+      const BPT_IN_FOR_EXACT_TOKENS_OUT = 2
       const exitUserData = ethers.utils.defaultAbiCoder.encode(
-        ["uint256", "uint256", "uint256"],
-        [EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptBalanceBefore, exitTokenIndex]
+        ["uint256", "uint256[]", "uint256"],
+        [BPT_IN_FOR_EXACT_TOKENS_OUT, [token0ToWithdraw, BigNumber.from(0)], bptBalanceBefore]
       )
 
       await relayer.connect(user).exitPool(
@@ -248,12 +387,77 @@ describe("TetuVaultAssetManager tests", function () {
           userData: exitUserData,
           toInternalBalance: false
         },
-        [t0ToDeposit, 0]
+        [token0ToWithdraw, 0]
       )
-      const bptBalanceAfter = await stablePool.balanceOf(user.address)
-      const userT0BalanceAfter = await tokens[0].balanceOf(user.address)
-      expect(userT0BalanceAfter).is.gt(userT0BalanceBefore)
-      expect(bptBalanceAfter).is.equal(0)
+      const token0BalAfter = await tokens[0].balanceOf(user.address)
+      expect(token0BalAfter).is.eq(token0BalBefore.add(token0ToWithdraw))
+    })
+
+    it("Rebalancer should be able to return funds to the balancer vault onJoin", async function () {
+      await initPool(tokens)
+      await assetManager.rebalance(poolId, false)
+      let poolManaged
+      ;[, poolManaged] = await assetManager.getPoolBalances(poolId)
+      expect(poolManaged).is.gt(0)
+
+      const config = {
+        targetPercentage: BigNumber.from(0),
+        upperCriticalPercentage: BigNumber.from(0),
+        lowerCriticalPercentage: BigNumber.from(0)
+      }
+      await stablePool.setAssetManagerPoolConfig(tokens[0].address, Misc.encodeInvestmentConfig(config))
+
+      const t0ToDeposit = BigNumber.from(5).mul(BigNumber.from(10).pow(18))
+      const t1ToDeposit = BigNumber.from(5).mul(BigNumber.from(10).pow(18))
+      await deposit(user, tokens, [t0ToDeposit, t1ToDeposit])
+      ;[, poolManaged] = await assetManager.getPoolBalances(poolId)
+      expect(poolManaged).is.eq(0)
+    })
+  })
+
+  describe("AM Config tests", function () {
+    it("Only pool should be able to update config", async function () {
+      const config = {
+        targetPercentage: BigNumber.from(0),
+        upperCriticalPercentage: BigNumber.from(0),
+        lowerCriticalPercentage: BigNumber.from(0)
+      }
+      await expect(assetManager.setConfig(poolId, Misc.encodeInvestmentConfig(config))).is.rejectedWith(
+        "Only callable by pool"
+      )
+    })
+
+    it("upperCriticalPercentage could not be higher than 100%", async function () {
+      const config = {
+        targetPercentage: BigNumber.from(0),
+        upperCriticalPercentage: BigNumber.from(10).pow(19),
+        lowerCriticalPercentage: BigNumber.from(0)
+      }
+      await expect(
+        stablePool.setAssetManagerPoolConfig(tokens[0].address, Misc.encodeInvestmentConfig(config))
+      ).is.rejectedWith("Upper critical level must be less than or equal to 100%")
+    })
+
+    it("targetPercentage could not be higher upperCriticalPercentage", async function () {
+      const config = {
+        targetPercentage: BigNumber.from(10).pow(17).add(1),
+        upperCriticalPercentage: BigNumber.from(10).pow(17),
+        lowerCriticalPercentage: BigNumber.from(0)
+      }
+      await expect(
+        stablePool.setAssetManagerPoolConfig(tokens[0].address, Misc.encodeInvestmentConfig(config))
+      ).is.rejectedWith("Target must be less than or equal to upper critical level")
+    })
+
+    it("lowerCriticalPercentage could not be higher targetPercentage", async function () {
+      const config = {
+        targetPercentage: BigNumber.from(0),
+        upperCriticalPercentage: BigNumber.from(10).pow(17),
+        lowerCriticalPercentage: BigNumber.from(10).pow(17).add(1)
+      }
+      await expect(
+        stablePool.setAssetManagerPoolConfig(tokens[0].address, Misc.encodeInvestmentConfig(config))
+      ).is.rejectedWith("Lower critical level must be less than or equal to target")
     })
   })
 
