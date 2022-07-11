@@ -2,21 +2,20 @@
 
 pragma solidity 0.8.4;
 
-import "./third_party/balancer/IBVault.sol";
-import "./third_party/balancer/IAssetManager.sol";
-import "./third_party/balancer/IRelayedBasePool8.sol";
 import "@tetu_io/tetu-contracts/contracts/openzeppelin/SafeERC20.sol";
-import "hardhat/console.sol";
+import "./third_party/balancer/IBVault.sol";
+import "./third_party/balancer/IRelayedBasePool8.sol";
+import "./interface/ITetuAssetManager.sol";
 
 /**
- * @title RewardsAssetManager
- * @dev RewardsAssetManager is owned by a single pool such that any
+ * @title TetuRewardsAssetManager
+ * @dev TetuRewardsAssetManager is owned by a single pool such that any
  * rewards received by the Asset Manager may be distributed to LPs
  *
  * Note: any behaviour to claim these rewards must be implemented in a derived contract
  */
 
-abstract contract RewardsAssetManager is IAssetManager {
+abstract contract TetuRewardsAssetManager is ITetuAssetManager {
   using SafeERC20 for IERC20;
   uint256 private constant _CONFIG_PRECISION = 1e18;
   IBVault private immutable _vault;
@@ -24,13 +23,6 @@ abstract contract RewardsAssetManager is IAssetManager {
 
   // RewardsAssetManager manages a single Pool, to which it allocates all rewards that it receives.
   bytes32 private _poolId;
-
-  struct InvestmentConfig {
-    uint64 targetPercentage;
-    uint64 upperCriticalPercentage;
-    uint64 lowerCriticalPercentage;
-  }
-
   InvestmentConfig private _config;
 
   event InvestmentConfigSet(uint64 targetPercentage, uint64 lowerCriticalPercentage, uint64 upperCriticalPercentage);
@@ -61,6 +53,15 @@ abstract contract RewardsAssetManager is IAssetManager {
   modifier withCorrectPool(bytes32 pId) {
     require(pId == _poolId, "AssetManager called with incorrect poolId");
     _;
+  }
+
+  /**
+   * @dev Should be called in same transaction as deployment through a factory contract
+   * @param poolId - the id of the pool
+   */
+  //todo add factory
+  function initialize(bytes32 poolId) external override {
+    _initialize(poolId);
   }
 
   function _initialize(bytes32 pId) internal {
@@ -192,7 +193,13 @@ abstract contract RewardsAssetManager is IAssetManager {
     emit InvestmentConfigSet(config.targetPercentage, config.lowerCriticalPercentage, config.upperCriticalPercentage);
   }
 
-  function getInvestmentConfig(bytes32 pId) external view withCorrectPool(pId) returns (InvestmentConfig memory) {
+  function getInvestmentConfig(bytes32 pId)
+    external
+    view
+    override
+    withCorrectPool(pId)
+    returns (InvestmentConfig memory)
+  {
     return _config;
   }
 
@@ -232,8 +239,6 @@ abstract contract RewardsAssetManager is IAssetManager {
     InvestmentConfig memory config = _config;
 
     uint256 targetInvestment = ((poolCash + poolManaged) * config.targetPercentage) / _CONFIG_PRECISION;
-    console.log("_targetInvestment: %s", targetInvestment);
-    console.log("_poolManaged: %s", poolManaged);
     if (targetInvestment > poolManaged) {
       // Pool is under-invested so add more funds
       uint256 rebalanceAmount = targetInvestment - poolManaged;
@@ -241,7 +246,6 @@ abstract contract RewardsAssetManager is IAssetManager {
     } else {
       // Pool is over-invested so remove some funds
       uint256 rebalanceAmount = poolManaged - targetInvestment;
-      console.log("rebalanceAmount: %s", rebalanceAmount);
       _capitalOut(rebalanceAmount);
     }
 

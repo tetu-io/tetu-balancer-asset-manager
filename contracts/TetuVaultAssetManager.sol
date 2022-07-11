@@ -2,17 +2,14 @@
 
 import "@tetu_io/tetu-contracts/contracts/openzeppelin/SafeERC20.sol";
 import "@tetu_io/tetu-contracts/contracts/openzeppelin/Math.sol";
-import "./interface/IERC4626.sol";
 import "./third_party/balancer/IBVault.sol";
-import "./RewardsAssetManager.sol";
-
+import "./interface/IERC4626.sol";
 import "./interface/IGauge.sol";
-
-import "hardhat/console.sol";
+import "./TetuRewardsAssetManager.sol";
 
 pragma solidity 0.8.4;
 
-contract TetuVaultAssetManager is RewardsAssetManager {
+contract TetuVaultAssetManager is TetuRewardsAssetManager {
   using SafeERC20 for IERC20;
 
   address public underlying;
@@ -26,7 +23,7 @@ contract TetuVaultAssetManager is RewardsAssetManager {
     address _underlying,
     address _rewardCollector,
     address _gague
-  ) RewardsAssetManager(balancerVault, IERC20(_underlying)) {
+  ) TetuRewardsAssetManager(balancerVault, IERC20(_underlying)) {
     require(_tetuVault != address(0), "zero tetu vault");
     require(_rewardCollector != address(0), "zero rewardCollector");
     underlying = _underlying;
@@ -36,21 +33,11 @@ contract TetuVaultAssetManager is RewardsAssetManager {
   }
 
   /**
-   * @dev Should be called in same transaction as deployment through a factory contract
-   * @param poolId - the id of the pool
-   */
-  //todo add factory
-  function initialize(bytes32 poolId) external {
-    _initialize(poolId);
-  }
-
-  /**
    * @dev Deposits capital into Tetu Vault
    * @param amount - the amount of tokens being deposited
    * @return the amount deposited
    */
   function _invest(uint256 amount, uint256) internal override returns (uint256) {
-    console.log("_invest amount: %s", amount);
     uint256 balance = IERC20(underlying).balanceOf(address(this));
     if (amount < balance) {
       balance = amount;
@@ -70,14 +57,12 @@ contract TetuVaultAssetManager is RewardsAssetManager {
    * @return the number of tokens to return to the balancerVault
    */
   function _divest(uint256 amountUnderlying, uint256) internal override returns (uint256) {
-    console.log("_divest amountUnderlying: %s", amountUnderlying);
     amountUnderlying = Math.min(amountUnderlying, _getAUM());
     uint256 existingBalance = IERC20(underlying).balanceOf(address(this));
     if (amountUnderlying > 0) {
       IERC4626(tetuVault).withdraw(amountUnderlying, address(this), address(this));
       uint256 newBalance = IERC20(underlying).balanceOf(address(this));
       uint256 divested = newBalance - existingBalance;
-      console.log("devested: %s", divested);
       require(divested > 0, "AM should receive requested tokens after the withdraw");
       return divested;
     }

@@ -22,8 +22,8 @@ contract TetuGagueRewardingRebalancingRelayer is IGagueRewardingPoolRelayer {
     _ensureCashBalance(poolId, tokens, minCashBalances);
     _calledPool = poolId;
     _;
-    _calledPool = _EMPTY_CALLED_POOL;
     _rebalance(poolId, tokens);
+    _calledPool = _EMPTY_CALLED_POOL;
   }
 
   IBVault public immutable vault;
@@ -43,7 +43,6 @@ contract TetuGagueRewardingRebalancingRelayer is IGagueRewardingPoolRelayer {
     (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
     for (uint256 i = 0; i < tokens.length; i++) {
       (, , , address assetManager) = vault.getPoolTokenInfo(poolId, tokens[i]);
-
       if (assetManager != address(0)) {
         IGagueRewardingAssetManager(assetManager).claimRewards();
       }
