@@ -43,28 +43,37 @@ export default {
       allowUnlimitedContractSize: true,
       chainId: argv.hardhatChainId,
       timeout: 99999999,
-      gas: argv.hardhatChainId === 137 ? 19_000_000 : 9_000_000,
-      forking: {
-        url: argv.hardhatChainId === 137 ? argv.maticRpcUrl : undefined,
+      gas: argv.hardhatChainId === 1 ? 19_000_000 :
+        argv.hardhatChainId === 137 ? 19_000_000 :
+          argv.hardhatChainId === 250 ? 11_000_000 :
+            9_000_000,
+      forking: argv.hardhatChainId !== 31337 ? {
+        url:
+          argv.hardhatChainId === 1 ? argv.ethRpcUrl :
+            argv.hardhatChainId === 137 ? argv.maticRpcUrl :
+              argv.hardhatChainId === 250 ? argv.ftmRpcUrl :
+                undefined,
         blockNumber:
-          argv.hardhatChainId === 137 ? (argv.maticForkBlock !== 0 ? argv.maticForkBlock : undefined) : undefined
-      },
+          argv.hardhatChainId === 1 ? argv.ethForkBlock !== 0 ? argv.ethForkBlock : undefined :
+            argv.hardhatChainId === 137 ? argv.maticForkBlock !== 0 ? argv.maticForkBlock : undefined :
+              argv.hardhatChainId === 250 ? argv.ftmForkBlock !== 0 ? argv.ftmForkBlock : undefined :
+                undefined
+      } : undefined,
       accounts: {
         mnemonic: "test test test test test test test test test test test junk",
         path: "m/44'/60'/0'/0",
         accountsBalance: "100000000000000000000000000000"
-      }
-      // loggingEnabled: true,
+      },
     },
     matic: {
-      url: argv.maticRpcUrl,
+      url: argv.maticRpcUrl || '',
       timeout: 99999,
       chainId: 137,
-      // gas: 12_000_000,
+      gas: 12_000_000,
       // gasPrice: 50_000_000_000,
       // gasMultiplier: 1.3,
-      accounts: [argv.privateKey]
-    }
+      accounts: [argv.privateKey],
+    },
   },
   etherscan: {
     //  https://hardhat.org/plugins/nomiclabs-hardhat-etherscan.html#multiple-api-keys-and-alternative-block-explorers
@@ -88,7 +97,7 @@ export default {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 9999
+            runs: 150
           }
         }
       }

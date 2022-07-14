@@ -1,9 +1,9 @@
-![Sphere solution diagram](tetu_contracts.svg)
+![Contracts](tetu_contracts.svg)
 ## Tetu Swap V2 contracts (balancer based)
 
 ### todo: add diagram and description
 
-[![codecov](https://codecov.io/gh/tetu-io/tetu-strategies-matic/branch/master/graph/badge.svg?token=FJ38EG24U7)](https://codecov.io/gh/tetu-io/tetu-strategies-matic)
+[![codecov](https://codecov.io/gh/tetu-io/tetu-balancer-asset-manager/branch/main/graph/badge.svg?token=H2eWt1GKMb)](https://codecov.io/gh/tetu-io/tetu-balancer-asset-manager)
 
 ## Links
 
