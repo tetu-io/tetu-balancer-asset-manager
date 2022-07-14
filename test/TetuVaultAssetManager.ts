@@ -5,13 +5,13 @@ import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers"
 import {ethers} from "hardhat"
 import {
   Authorizer,
-  ITetuAssetManager,
+  ERC4626AssetManager,
+  IAssetManagerBase,
   MockERC20,
   MockGague,
   MockTetuVaultV2,
   Relayer,
   TetuRelayedStablePool,
-  ERC4626AssetManager,
   Vault
 } from "../typechain"
 import {Misc} from "./utils/Misc"
@@ -27,7 +27,7 @@ describe("ERC4626AssetManager tests", function () {
   let user: SignerWithAddress
   let relayer: Relayer
   let rewardCollector: SignerWithAddress
-  let assetManager: ITetuAssetManager
+  let assetManager: IAssetManagerBase
   let tetuVault: MockTetuVaultV2
   let stablePool: TetuRelayedStablePool
   let poolId: string
@@ -115,7 +115,7 @@ describe("ERC4626AssetManager tests", function () {
       tokens[0].address,
       rewardCollector.address,
       isGage ? gague.address : ethers.constants.AddressZero
-    )) as ITetuAssetManager
+    )) as IAssetManagerBase
 
     const TetuStablePoolFact = await ethers.getContractFactory("TetuRelayedStablePool")
     stablePool = (await TetuStablePoolFact.deploy(
