@@ -6,12 +6,12 @@ import "@tetu_io/tetu-contracts/contracts/openzeppelin/Math.sol";
 import "./third_party/balancer/IBVault.sol";
 import "./interface/IERC4626.sol";
 import "./interface/IGauge.sol";
-import "./TetuRewardsAssetManager.sol";
+import "./AssetManagerBase.sol";
 
 pragma solidity 0.8.4;
 
 // todo description
-contract TetuVaultAssetManager is TetuRewardsAssetManager {
+contract ERC4626AssetManager is AssetManagerBase {
   using SafeERC20 for IERC20;
 
   // ***************************************************
@@ -36,7 +36,7 @@ contract TetuVaultAssetManager is TetuRewardsAssetManager {
     address underlying_,
     address rewardCollector_,
     address gauge_
-  ) TetuRewardsAssetManager(balancerVault_, IERC20(underlying_)) {
+  ) AssetManagerBase(balancerVault_, IERC20(underlying_)) {
     require(erc4626Vault_ != address(0), "zero ERC4626 vault");
     require(rewardCollector_ != address(0), "zero rewardCollector");
     erc4626Vault = erc4626Vault_;
@@ -99,12 +99,7 @@ contract TetuVaultAssetManager is TetuRewardsAssetManager {
   }
 
   /// @dev Claim all rewards from given gague and send to rewardCollector
-  function claimRewards() external onlyPoolRebalancer {
-    _claim();
-  }
-
-  /// @dev Claim all rewards from given gague and send to rewardCollector
-  function _claim() internal {
+  function _claim() internal override {
     if (address(gauge) != address(0) && rewardCollector != address(0)) {
       gauge.getAllRewards(address(erc4626Vault), address(this));
       for (uint256 i = 0; i < gauge.rewardTokensLength(address(erc4626Vault)); i++) {

@@ -7,7 +7,7 @@ import {
   IBVault,
   IVaultAuthorizer,
   MockERC20,
-  TetuGagueRewardingRebalancingRelayer,
+  Relayer,
   TetuRelayedStablePool
 } from "../typechain"
 import {BigNumber} from "ethers"
@@ -19,7 +19,7 @@ chai.use(solidity)
 
 describe("TetuStablePool tests", function () {
   let deployer: SignerWithAddress
-  let relayer: TetuGagueRewardingRebalancingRelayer
+  let relayer: Relayer
   let user: SignerWithAddress
   let stablePool: TetuRelayedStablePool
   let mockUsdc: MockERC20
@@ -44,7 +44,7 @@ describe("TetuStablePool tests", function () {
     await mockDai.mint(deployer.address, BigNumber.from(Misc.largeApproval))
     await mockDai.mint(user.address, BigNumber.from(Misc.largeApproval))
 
-    const RelayerFact = await ethers.getContractFactory("TetuGagueRewardingRebalancingRelayer")
+    const RelayerFact = await ethers.getContractFactory("Relayer")
     relayer = await RelayerFact.deploy(Misc.balancerVaultAddress)
   })
 

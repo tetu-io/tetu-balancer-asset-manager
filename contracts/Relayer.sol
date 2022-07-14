@@ -3,51 +3,67 @@
 pragma solidity 0.8.4;
 
 import "./third_party/balancer/IBVault.sol";
-import "./interface/IGagueRewardingAssetManager.sol";
-import "./interface/IGagueRewardingPoolRelayer.sol";
+import "./interface/IAssetManagerBase.sol";
+import "./interface/IRelayer.sol";
 
-contract TetuGagueRewardingRebalancingRelayer is IGagueRewardingPoolRelayer {
+contract Relayer is IRelayer {
+
+  // ***************************************************
+  //                CONSTANTS
+  // ***************************************************
+
   // We start at a non-zero value to make EIP2200 refunds lower, meaning there'll be a higher chance of them being
   // fully effective.
   bytes32 internal constant _EMPTY_CALLED_POOL =
-    bytes32(0x0000000000000000000000000000000000000000000000000000000000000001);
+  bytes32(0x0000000000000000000000000000000000000000000000000000000000000001);
 
-  modifier rebalance(
-    bytes32 poolId,
-    IAsset[] memory assets,
-    uint256[] memory minCashBalances
-  ) {
-    require(_calledPool == _EMPTY_CALLED_POOL, "Rebalancing relayer reentered");
-    IERC20[] memory tokens = _translateToIERC20(assets);
-    _ensureCashBalance(poolId, tokens, minCashBalances);
-    _calledPool = poolId;
-    _;
-    _rebalance(poolId, tokens);
-    _calledPool = _EMPTY_CALLED_POOL;
-  }
+  // ***************************************************
+  //                VARIABLES
+  // ***************************************************
 
   IBVault public immutable vault;
   bytes32 internal _calledPool;
+
+  // ***************************************************
+  //                  EVENTS
+  // ***************************************************
+
+  // todo
+
+  // ***************************************************
+  //                CONSTRUCTOR
+  // ***************************************************
 
   constructor(IBVault _vault) {
     vault = _vault;
     _calledPool = _EMPTY_CALLED_POOL;
   }
 
+  // ***************************************************
+  //                    VIEWS
+  // ***************************************************
+
   function hasCalledPool(bytes32 poolId) external view override returns (bool) {
     return _calledPool == poolId;
   }
 
-  //todo need to think if needs to be protected
-  function claimGagueRewards(bytes32 poolId) external override {
-    (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
+  // ***************************************************
+  //                    CLAIM
+  // ***************************************************
+
+  function claimAssetManagerRewards(bytes32 poolId) external override {
+    (IERC20[] memory tokens, ,) = vault.getPoolTokens(poolId);
     for (uint256 i = 0; i < tokens.length; i++) {
       (, , , address assetManager) = vault.getPoolTokenInfo(poolId, tokens[i]);
       if (assetManager != address(0)) {
-        IGagueRewardingAssetManager(assetManager).claimRewards();
+        IAssetManagerBase(assetManager).claimRewards();
       }
     }
   }
+
+  // ***************************************************
+  //                    JOIN/EXIT
+  // ***************************************************
 
   function joinPool(
     bytes32 poolId,
@@ -66,6 +82,24 @@ contract TetuGagueRewardingRebalancingRelayer is IGagueRewardingPoolRelayer {
     vault.exitPool(poolId, msg.sender, recipient, request);
   }
 
+  // ***************************************************
+  //                 REBALANCE
+  // ***************************************************
+
+  modifier rebalance(
+    bytes32 poolId,
+    IAsset[] memory assets,
+    uint256[] memory minCashBalances
+  ) {
+    require(_calledPool == _EMPTY_CALLED_POOL, "Rebalancing relayer reentered");
+    IERC20[] memory tokens = _translateToIERC20(assets);
+    _ensureCashBalance(poolId, tokens, minCashBalances);
+    _calledPool = poolId;
+    _;
+    _rebalance(poolId, tokens);
+    _calledPool = _EMPTY_CALLED_POOL;
+  }
+
   function _ensureCashBalance(
     bytes32 poolId,
     IERC20[] memory tokens,
@@ -79,12 +113,12 @@ contract TetuGagueRewardingRebalancingRelayer is IGagueRewardingPoolRelayer {
         if (cash < cashNeeded) {
           // Withdraw the managed balance back to the pool to ensure that the cash covers the withdrawal
           // This will automatically update the vault with the most recent managed balance
-          IGagueRewardingAssetManager(assetManager).capitalOut(poolId, cashNeeded - cash);
+          IAssetManagerBase(assetManager).capitalOut(poolId, cashNeeded - cash);
         } else {
           // We want to ensure that the pool knows about all asset manager returns
           // to avoid a new LP getting a share of returns earned before they joined.
           // We then update the vault with the current managed balance manually.
-          IGagueRewardingAssetManager(assetManager).updateBalanceOfPool(poolId);
+          IAssetManagerBase(assetManager).updateBalanceOfPool(poolId);
         }
       }
     }
@@ -99,10 +133,14 @@ contract TetuGagueRewardingRebalancingRelayer is IGagueRewardingPoolRelayer {
         // exploits should be enabled by allowing for this, and b) Pools trust their Asset Managers.
 
         // Do a non-forced rebalance
-        IGagueRewardingAssetManager(assetManager).rebalance(poolId, false);
+        IAssetManagerBase(assetManager).rebalance(poolId, false);
       }
     }
   }
+
+  // ***************************************************
+  //                 COMMON INTERNAL
+  // ***************************************************
 
   function _translateToIERC20(IAsset[] memory assets) internal pure returns (IERC20[] memory) {
     IERC20[] memory tokens = new IERC20[](assets.length);

@@ -4,6 +4,8 @@ pragma solidity 0.8.4;
 
 import "../third_party/balancer/IBasePoolRelayer8.sol";
 
-interface IGagueRewardingPoolRelayer is IBasePoolRelayer {
-  function claimGagueRewards(bytes32 poolId) external;
+interface IRelayer is IBasePoolRelayer {
+
+  function claimAssetManagerRewards(bytes32 poolId) external;
+
 }

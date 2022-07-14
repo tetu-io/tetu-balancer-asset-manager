@@ -15,5 +15,7 @@
 pragma solidity 0.8.4;
 
 interface IBasePoolRelayer {
+
   function hasCalledPool(bytes32 poolId) external view returns (bool);
+
 }

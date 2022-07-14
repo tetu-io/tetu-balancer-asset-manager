@@ -9,9 +9,9 @@ import {
   MockERC20,
   MockGague,
   MockTetuVaultV2,
-  TetuGagueRewardingRebalancingRelayer,
+  Relayer,
   TetuRelayedStablePool,
-  TetuVaultAssetManager,
+  ERC4626AssetManager,
   Vault
 } from "../typechain"
 import {Misc} from "./utils/Misc"
@@ -22,10 +22,10 @@ const {expect} = chai
 chai.use(chaiAsPromised)
 chai.use(solidity)
 
-describe("TetuVaultAssetManager tests", function () {
+describe("ERC4626AssetManager tests", function () {
   let deployer: SignerWithAddress
   let user: SignerWithAddress
-  let relayer: TetuGagueRewardingRebalancingRelayer
+  let relayer: Relayer
   let rewardCollector: SignerWithAddress
   let assetManager: ITetuAssetManager
   let tetuVault: MockTetuVaultV2
@@ -92,7 +92,7 @@ describe("TetuVaultAssetManager tests", function () {
     isReturnTokens = true,
     isGage = true,
     gagueReturnAmount = BigNumber.from("100"),
-    assetManagerImplementation = "TetuVaultAssetManager"
+    assetManagerImplementation = "ERC4626AssetManager"
   ) => {
     const VaultFactory = await ethers.getContractFactory("MockTetuVaultV2")
     tetuVault = await VaultFactory.deploy(tokens[0].address, "TetuT0", "TetuT0", 18, isReturnShares, isReturnTokens)
@@ -105,11 +105,11 @@ describe("TetuVaultAssetManager tests", function () {
     const authorizer = (await AuthFact.deploy(deployer.address)) as Authorizer
     const BalVaultFactory = await ethers.getContractFactory("Vault")
     balancerVault = (await BalVaultFactory.deploy(authorizer.address, mockWeth.address, 0, 0)) as Vault
-    const RelayerFact = await ethers.getContractFactory("TetuGagueRewardingRebalancingRelayer")
+    const RelayerFact = await ethers.getContractFactory("Relayer")
     relayer = await RelayerFact.deploy(balancerVault.address)
 
-    const TetuVaultAssetManagerFact = await ethers.getContractFactory(assetManagerImplementation)
-    assetManager = (await TetuVaultAssetManagerFact.deploy(
+    const ERC4626AssetManagerFact = await ethers.getContractFactory(assetManagerImplementation)
+    assetManager = (await ERC4626AssetManagerFact.deploy(
       balancerVault.address,
       tetuVault.address,
       tokens[0].address,
@@ -220,22 +220,22 @@ describe("TetuVaultAssetManager tests", function () {
     })
 
     it("poolID can't be empty during the initialization", async function () {
-      const TetuVaultAssetManagerFact = await ethers.getContractFactory("TetuVaultAssetManager")
-      const assetManager = (await TetuVaultAssetManagerFact.deploy(
+      const ERC4626AssetManagerFact = await ethers.getContractFactory("ERC4626AssetManager")
+      const assetManager = (await ERC4626AssetManagerFact.deploy(
         balancerVault.address,
         tetuVault.address,
         tokens[0].address,
         rewardCollector.address,
         gague.address
-      )) as TetuVaultAssetManager
+      )) as ERC4626AssetManager
       const nonExistingPoolId = "0x0000000000000000000000000000000000000000000000000000000000000000"
       await expect(assetManager.initialize(nonExistingPoolId)).is.rejectedWith("Pool id cannot be empty")
     })
 
     it("underlying can't be empty during the initialization", async function () {
-      const TetuVaultAssetManagerFact = await ethers.getContractFactory("TetuVaultAssetManager")
+      const ERC4626AssetManagerFact = await ethers.getContractFactory("ERC4626AssetManager")
       await expect(
-        TetuVaultAssetManagerFact.deploy(
+        ERC4626AssetManagerFact.deploy(
           balancerVault.address,
           tetuVault.address,
           ethers.constants.AddressZero,
@@ -246,9 +246,9 @@ describe("TetuVaultAssetManager tests", function () {
     })
 
     it("Balancer vault can't be empty during the initialization", async function () {
-      const TetuVaultAssetManagerFact = await ethers.getContractFactory("TetuVaultAssetManager")
+      const ERC4626AssetManagerFact = await ethers.getContractFactory("ERC4626AssetManager")
       await expect(
-        TetuVaultAssetManagerFact.deploy(
+        ERC4626AssetManagerFact.deploy(
           ethers.constants.AddressZero,
           tetuVault.address,
           tokens[0].address,
@@ -259,9 +259,9 @@ describe("TetuVaultAssetManager tests", function () {
     })
 
     it("Tetu vault can't be empty during the initialization", async function () {
-      const TetuVaultAssetManagerFact = await ethers.getContractFactory("TetuVaultAssetManager")
+      const ERC4626AssetManagerFact = await ethers.getContractFactory("ERC4626AssetManager")
       await expect(
-        TetuVaultAssetManagerFact.deploy(
+        ERC4626AssetManagerFact.deploy(
           balancerVault.address,
           ethers.constants.AddressZero,
           tokens[0].address,
@@ -272,9 +272,9 @@ describe("TetuVaultAssetManager tests", function () {
     })
 
     it("rewardCollector can't be empty during the initialization", async function () {
-      const TetuVaultAssetManagerFact = await ethers.getContractFactory("TetuVaultAssetManager")
+      const ERC4626AssetManagerFact = await ethers.getContractFactory("ERC4626AssetManager")
       await expect(
-        TetuVaultAssetManagerFact.deploy(
+        ERC4626AssetManagerFact.deploy(
           balancerVault.address,
           tetuVault.address,
           tokens[0].address,
@@ -504,7 +504,7 @@ describe("TetuVaultAssetManager tests", function () {
   describe("Claim gague rewards", function () {
     it("Relayer should be able to claim rewards", async function () {
       const feeCollectorBalBefore = await mockRewardToken.balanceOf(rewardCollector.address)
-      await relayer.claimGagueRewards(poolId)
+      await relayer.claimAssetManagerRewards(poolId)
       const feeCollectorBalAfter = await mockRewardToken.balanceOf(rewardCollector.address)
       expect(feeCollectorBalAfter).is.gt(feeCollectorBalBefore)
       expect(feeCollectorBalAfter).is.eq(BigNumber.from(100))
@@ -513,7 +513,7 @@ describe("TetuVaultAssetManager tests", function () {
     it("Relayer should process claim transaction with empty gague", async function () {
       await setupTestCase(true, true, false)
       const feeCollectorBalBefore = await mockRewardToken.balanceOf(rewardCollector.address)
-      await relayer.claimGagueRewards(poolId)
+      await relayer.claimAssetManagerRewards(poolId)
       const feeCollectorBalAfter = await mockRewardToken.balanceOf(rewardCollector.address)
       expect(feeCollectorBalAfter).is.eq(feeCollectorBalBefore)
     })
@@ -521,7 +521,7 @@ describe("TetuVaultAssetManager tests", function () {
     it("Relayer should process claim transaction when no gague rewards", async function () {
       await setupTestCase(true, true, true, BigNumber.from(0))
       const feeCollectorBalBefore = await mockRewardToken.balanceOf(rewardCollector.address)
-      await relayer.claimGagueRewards(poolId)
+      await relayer.claimAssetManagerRewards(poolId)
       const feeCollectorBalAfter = await mockRewardToken.balanceOf(rewardCollector.address)
       expect(feeCollectorBalAfter).is.eq(feeCollectorBalBefore)
     })

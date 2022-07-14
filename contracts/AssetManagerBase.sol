@@ -6,13 +6,13 @@ pragma solidity 0.8.4;
 import "@tetu_io/tetu-contracts/contracts/openzeppelin/SafeERC20.sol";
 import "./third_party/balancer/IBVault.sol";
 import "./third_party/balancer/IRelayedBasePool8.sol";
-import "./interface/ITetuAssetManager.sol";
+import "./interface/IAssetManagerBase.sol";
 
 /// @title TetuRewardsAssetManager
 /// @dev TetuRewardsAssetManager is owned by a single pool such that any
 ///      rewards received by the Asset Manager may be distributed to LPs
 ///      Note: any behaviour to claim these rewards must be implemented in a derived contract
-abstract contract TetuRewardsAssetManager is ITetuAssetManager {
+abstract contract AssetManagerBase is IAssetManagerBase {
   using SafeERC20 for IERC20;
 
   // ***************************************************
@@ -171,7 +171,7 @@ abstract contract TetuRewardsAssetManager is ITetuAssetManager {
   }
 
   // ***************************************************
-  //                 DEPOSIT / WITHDRAW
+  //              DEPOSIT / WITHDRAW / CLAIM
   // ***************************************************
 
 
@@ -219,6 +219,13 @@ abstract contract TetuRewardsAssetManager is ITetuAssetManager {
    * @return the number of tokens to return to the vault
    */
   function _divest(uint256 amount, uint256 aum) internal virtual returns (uint256);
+
+  /// @dev Claim all rewards and send to rewardCollector
+  function claimRewards() external override {
+    _claim();
+  }
+
+  function _claim() internal virtual;
 
   // ***************************************************
   //                 UPDATE/REBALANCE

@@ -4,11 +4,11 @@ pragma solidity 0.8.4;
 
 import "../third_party/balancer/IAssetManager.sol";
 import "../third_party/balancer/IBVault.sol";
-import "../interface/ITetuAssetManager.sol";
+import "../interface/IAssetManagerBase.sol";
 import "./interface/IRelayer.sol";
 
 
-contract MockReentrantAssetManager is ITetuAssetManager {
+contract MockReentrantAssetManager is IAssetManagerBase {
   address public underlying;
   InvestmentConfig private _config;
 
@@ -70,4 +70,5 @@ contract MockReentrantAssetManager is ITetuAssetManager {
 
   function capitalOut(bytes32, uint256) external override {}
 
+  function claimRewards() external override {}
 }

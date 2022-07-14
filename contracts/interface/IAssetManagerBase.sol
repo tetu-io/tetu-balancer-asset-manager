@@ -5,7 +5,8 @@ pragma solidity 0.8.4;
 import "../third_party/balancer/IAssetManager.sol";
 
 
-interface ITetuAssetManager is IAssetManager {
+interface IAssetManagerBase is IAssetManager {
+
   struct InvestmentConfig {
     uint64 targetPercentage;
     uint64 upperCriticalPercentage;
@@ -15,4 +16,6 @@ interface ITetuAssetManager is IAssetManager {
   function initialize(bytes32 poolId) external;
 
   function getInvestmentConfig(bytes32 pId) external view returns (InvestmentConfig memory);
+
+  function claimRewards() external;
 }
