@@ -268,7 +268,7 @@ describe("TetuVaultAssetManager tests", function () {
           rewardCollector.address,
           gague.address
         )
-      ).is.rejectedWith("zero tetu vault")
+      ).is.rejectedWith("zero ERC4626 vault")
     })
 
     it("rewardCollector can't be empty during the initialization", async function () {
