@@ -2,8 +2,8 @@
 
 pragma solidity 0.8.4;
 
-import "@tetu_io/tetu-contracts/contracts/openzeppelin/SafeERC20.sol";
-import "../interface/IGauge.sol";
+import "../interfaces/IGauge.sol";
+import "../openzeppelin/SafeERC20.sol";
 
 contract MockGague is IGauge {
   using SafeERC20 for IERC20;

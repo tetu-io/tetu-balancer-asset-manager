@@ -2,9 +2,9 @@
 
 pragma solidity 0.8.4;
 
-import "@tetu_io/tetu-contracts/contracts/openzeppelin/SafeERC20.sol";
 import "@rari-capital/solmate/src/tokens/ERC20.sol";
-import "../interface/IERC4626.sol";
+import "../openzeppelin/SafeERC20.sol";
+import "../interfaces/IERC4626.sol";
 
 contract MockTetuVaultV2 is IERC4626, ERC20 {
   using SafeERC20 for IERC20;

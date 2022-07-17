@@ -1,7 +1,7 @@
 {
-  "name": "tetu_strategies_matic",
+  "name": "tetu_balacncer_asset_manager",
   "version": "1.0.0",
-  "description": "Tetu strategies on Polygon",
+  "description": "Tetu implementation of Balancer's asset managers based on rebalancing relayer",
   "main": "hardhat.config.js",
   "directories": {
     "test": "test"
@@ -46,7 +46,6 @@
     "@openzeppelin/hardhat-upgrades": "^1.10.0",
     "@rari-capital/solmate": "^6.4.0",
     "@tenderly/hardhat-tenderly": "^1.0.12",
-    "@tetu_io/tetu-contracts": "1.7.2",
     "@typechain/ethers-v5": "^7.2.0",
     "@typechain/hardhat": "^4.0.0",
     "@types/chai": "^4.2.22",

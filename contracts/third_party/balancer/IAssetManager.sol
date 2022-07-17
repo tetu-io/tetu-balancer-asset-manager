@@ -12,9 +12,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import "@tetu_io/tetu-contracts/contracts/openzeppelin/IERC20.sol";
-
 pragma solidity 0.8.4;
+
+import "../../interfaces/IERC20.sol";
 
 
 interface IAssetManager {

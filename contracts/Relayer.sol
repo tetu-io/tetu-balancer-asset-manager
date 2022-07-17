@@ -3,8 +3,8 @@
 pragma solidity 0.8.4;
 
 import "./third_party/balancer/IBVault.sol";
-import "./interface/IAssetManagerBase.sol";
-import "./interface/IRelayer.sol";
+import "./interfaces/IAssetManagerBase.sol";
+import "./interfaces/IRelayer.sol";
 
 contract Relayer is IRelayer {
 

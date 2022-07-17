@@ -4,8 +4,8 @@ pragma solidity 0.8.4;
 
 import "../third_party/balancer/IAssetManager.sol";
 import "../third_party/balancer/IBVault.sol";
-import "../interface/IAssetManagerBase.sol";
-import "./interface/IRelayer.sol";
+import "../interfaces/IAssetManagerBase.sol";
+import "./interfaces/IRelayer.sol";
 
 
 contract MockReentrantAssetManager is IAssetManagerBase {
@@ -60,10 +60,10 @@ contract MockReentrantAssetManager is IAssetManagerBase {
     uint256[] memory _amounts = new uint256[](2);
     // reentrancy call
     IBVault.JoinPoolRequest memory request = IBVault.JoinPoolRequest({
-    assets : _assets,
-    maxAmountsIn : _amounts,
-    userData : "",
-    fromInternalBalance : false
+      assets : _assets,
+      maxAmountsIn : _amounts,
+      userData : "",
+      fromInternalBalance : false
     });
     IRelayer(msg.sender).joinPool(poolId, address(0), request);
   }

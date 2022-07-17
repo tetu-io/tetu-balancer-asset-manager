@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-//todo move to local dir
-import "@tetu_io/tetu-contracts/contracts/openzeppelin/SafeERC20.sol";
-import "@tetu_io/tetu-contracts/contracts/openzeppelin/Math.sol";
+pragma solidity 0.8.4;
+
+import "./openzeppelin/SafeERC20.sol";
+import "./openzeppelin/Math.sol";
 import "./third_party/balancer/IBVault.sol";
-import "./interface/IERC4626.sol";
-import "./interface/IGauge.sol";
+import "./interfaces/IERC4626.sol";
+import "./interfaces/IGauge.sol";
 import "./AssetManagerBase.sol";
 
-pragma solidity 0.8.4;
 
 // todo description
 contract ERC4626AssetManager is AssetManagerBase {

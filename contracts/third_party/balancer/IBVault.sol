@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: ISC
 pragma solidity 0.8.4;
 
-import "@tetu_io/tetu-contracts/contracts/openzeppelin/IERC20.sol";
+import "../../interfaces/IERC20.sol";
 
 
 interface IAsset {

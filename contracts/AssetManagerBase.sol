@@ -2,11 +2,10 @@
 
 pragma solidity 0.8.4;
 
-//todo move to local dir
-import "@tetu_io/tetu-contracts/contracts/openzeppelin/SafeERC20.sol";
+import "./openzeppelin/SafeERC20.sol";
 import "./third_party/balancer/IBVault.sol";
 import "./third_party/balancer/IRelayedBasePool8.sol";
-import "./interface/IAssetManagerBase.sol";
+import "./interfaces/IAssetManagerBase.sol";
 
 /// @title TetuRewardsAssetManager
 /// @dev TetuRewardsAssetManager is owned by a single pool such that any
