@@ -11,7 +11,7 @@ import {
   TetuRelayedStablePool
 } from "../typechain"
 import {BigNumber} from "ethers"
-import {Misc} from "./utils/Misc"
+import {bn, Misc, PoolSpecialization} from "./utils/Misc"
 
 const {expect} = chai
 chai.use(chaiAsPromised)
@@ -22,10 +22,9 @@ describe("TetuStablePool tests", function () {
   let relayer: Relayer
   let user: SignerWithAddress
   let stablePool: TetuRelayedStablePool
-  let mockUsdc: MockERC20
-  let mockDai: MockERC20
   let poolId: string
   let balancerVault: IBVault
+  let tokens: MockERC20[]
 
   const ampParam = 500
   const swapFee = "3000000000000000"
@@ -35,17 +34,19 @@ describe("TetuStablePool tests", function () {
   before(async function () {
     ;[deployer, user] = await ethers.getSigners()
     const USDC = await ethers.getContractFactory("MockERC20")
-    mockUsdc = await USDC.deploy("USD Coin (PoS)", "USDC", 6)
+    const mockUsdc = await USDC.deploy("USD Coin (PoS)", "USDC", 18)
     await mockUsdc.mint(deployer.address, BigNumber.from(Misc.largeApproval))
     await mockUsdc.mint(user.address, BigNumber.from(Misc.largeApproval))
 
     const DAI = await ethers.getContractFactory("MockERC20")
-    mockDai = await DAI.deploy("(PoS) Dai Stablecoin", "DAI", 18)
+    const mockDai = await DAI.deploy("(PoS) Dai Stablecoin", "DAI", 18)
     await mockDai.mint(deployer.address, BigNumber.from(Misc.largeApproval))
     await mockDai.mint(user.address, BigNumber.from(Misc.largeApproval))
 
     const RelayerFact = await ethers.getContractFactory("Relayer")
     relayer = await RelayerFact.deploy(Misc.balancerVaultAddress)
+    tokens = Misc.sortTokens([mockUsdc, mockDai])
+
   })
 
   beforeEach(async function () {
@@ -54,7 +55,7 @@ describe("TetuStablePool tests", function () {
       Misc.balancerVaultAddress,
       poolName,
       poolSymbol,
-      [mockUsdc.address, mockDai.address],
+      [tokens[0].address, tokens[1].address],
       ampParam,
       swapFee,
       "0",
@@ -111,19 +112,19 @@ describe("TetuStablePool tests", function () {
     })
 
     it("Owner can initialize pool", async function () {
-      await initPool([mockUsdc, mockDai])
-      const tokenInfo = await balancerVault.getPoolTokenInfo(poolId, mockUsdc.address)
+      await initPool(tokens)
+      const tokenInfo = await balancerVault.getPoolTokenInfo(poolId, tokens[0].address)
       expect(tokenInfo[0]).is.eq(100)
       expect(tokenInfo[1]).is.eq(0)
     })
 
     it("User should be able to join/exit via Relayer", async function () {
-      await initPool([mockUsdc, mockDai])
-      const tokens = [mockUsdc.address, mockDai.address]
+      await initPool(tokens)
+
       const initialBalances = [BigNumber.from(100), BigNumber.from(100)]
 
-      await mockUsdc.connect(user).approve(balancerVault.address, initialBalances[0])
-      await mockDai.connect(user).approve(balancerVault.address, initialBalances[1])
+      await tokens[0].connect(user).approve(balancerVault.address, initialBalances[0])
+      await tokens[1].connect(user).approve(balancerVault.address, initialBalances[1])
 
       const JOIN_KIND_INIT = 1
       const initUserData = ethers.utils.defaultAbiCoder.encode(
@@ -131,13 +132,13 @@ describe("TetuStablePool tests", function () {
         [JOIN_KIND_INIT, initialBalances]
       )
       const joinPoolRequest = {
-        assets: tokens,
+        assets: [tokens[0].address, tokens[1].address],
         maxAmountsIn: initialBalances,
         userData: initUserData,
         fromInternalBalance: false
       }
       await relayer.connect(user).joinPool(poolId, user.address, joinPoolRequest)
-      const tokenInfo1 = await balancerVault.getPoolTokenInfo(poolId, mockUsdc.address)
+      const tokenInfo1 = await balancerVault.getPoolTokenInfo(poolId, tokens[0].address)
       const expectedToken0Balance = 200
       expect(tokenInfo1[0]).is.eq(expectedToken0Balance)
       expect(tokenInfo1[1]).is.eq(0)
@@ -154,24 +155,24 @@ describe("TetuStablePool tests", function () {
         poolId,
         user.address,
         {
-          assets: tokens,
+          assets: [tokens[0].address, tokens[1].address],
           minAmountsOut: Array(tokens.length).fill(0),
           userData: exitUserData,
           toInternalBalance: false
         },
         [0, 0]
       )
-      const tokenInfo2 = await balancerVault.getPoolTokenInfo(poolId, mockUsdc.address)
+      const tokenInfo2 = await balancerVault.getPoolTokenInfo(poolId, tokens[0].address)
       expect(tokenInfo2[0]).is.lt(expectedToken0Balance)
     })
 
     it("Only Relayer should be able to join", async function () {
-      await initPool([mockUsdc, mockDai])
-      const tokens = [mockUsdc.address, mockDai.address]
+      await initPool(tokens)
+
       const initialBalances = [BigNumber.from(100), BigNumber.from(100)]
 
-      await mockUsdc.connect(user).approve(balancerVault.address, initialBalances[0])
-      await mockDai.connect(user).approve(balancerVault.address, initialBalances[1])
+      await tokens[0].connect(user).approve(balancerVault.address, initialBalances[0])
+      await tokens[1].connect(user).approve(balancerVault.address, initialBalances[1])
 
       const JOIN_KIND_INIT = 1
       const initUserData = ethers.utils.defaultAbiCoder.encode(
@@ -179,7 +180,7 @@ describe("TetuStablePool tests", function () {
         [JOIN_KIND_INIT, initialBalances]
       )
       const joinPoolRequest = {
-        assets: tokens,
+        assets: [tokens[0].address, tokens[1].address],
         maxAmountsIn: initialBalances,
         userData: initUserData,
         fromInternalBalance: false
@@ -190,13 +191,12 @@ describe("TetuStablePool tests", function () {
     })
 
     it("Only Relayer should be able to exit", async function () {
-      await initPool([mockUsdc, mockDai])
-      const tokens = [mockUsdc.address, mockDai.address]
+      await initPool(tokens)
       const exitUserData = ethers.utils.defaultAbiCoder.encode(["uint256", "uint256", "uint256"], [0, 10, 0])
 
       await expect(
         balancerVault.connect(user).exitPool(poolId, user.address, user.address, {
-          assets: tokens,
+          assets: [tokens[0].address, tokens[1].address],
           minAmountsOut: Array(tokens.length).fill(0),
           userData: exitUserData,
           toInternalBalance: false
@@ -207,5 +207,51 @@ describe("TetuStablePool tests", function () {
     it("Pool should return relayer address", async function () {
       expect(await stablePool.getRelayer()).is.eq(relayer.address)
     })
+
+    it('sets scaling factors', async () => {
+      const poolScalingFactors = await stablePool.getScalingFactors()
+      const tokenScalingFactors = [BigNumber.from(10).pow(18), BigNumber.from(10).pow(18)];
+      expect(poolScalingFactors).to.deep.equal(tokenScalingFactors);
+    });
+
+    it('reverts if there is a single token', async () => {
+      const TetuStablePoolFact = await ethers.getContractFactory("TetuRelayedStablePool")
+      await expect(TetuStablePoolFact.deploy(
+        Misc.balancerVaultAddress,
+        poolName,
+        poolSymbol,
+        [tokens[0].address],
+        ampParam,
+        swapFee,
+        "0",
+        "0",
+        deployer.address,
+        relayer.address,
+        [ethers.constants.AddressZero, ethers.constants.AddressZero]
+      )).is.revertedWith('BAL#200')
+    });
+
+    describe('creation', () => {
+      context('when the creation succeeds', () => {
+        it('sets the vault', async () => {
+          expect(await stablePool.getVault()).to.equal(balancerVault.address)
+        })
+
+        it('uses general specialization', async () => {
+          const [address, specialization ] = await balancerVault.getPool(poolId)
+          expect(address).to.equal(stablePool.address);
+          expect(specialization).to.equal(PoolSpecialization.TwoTokenPool)
+        })
+
+        it('registers tokens in the vault', async () => {
+          const { tokens, balances } = await balancerVault.getPoolTokens(poolId);
+          expect(tokens).to.have.members(tokens);
+          expect(balances[0]).is.eq(bn(0))
+          expect(balances[1]).is.eq(bn(0))
+        });
+
+      })
+    })
+
   })
 })

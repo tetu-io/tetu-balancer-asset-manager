@@ -8,6 +8,16 @@ export type InvestmentConfig = {
   lowerCriticalPercentage: BigNumberish
 }
 
+export enum PoolSpecialization {
+    GeneralPool = 0,
+    MinimalSwapInfoPool = 1,
+    TwoTokenPool = 2
+}
+
+export const bn = (x: BigNumberish): BigNumber => {
+  return BigNumber.from(x);
+};
+
 export class Misc {
   public static readonly SECONDS_OF_DAY = 60 * 60 * 24
   public static readonly SECONDS_OF_YEAR = Misc.SECONDS_OF_DAY * 365
