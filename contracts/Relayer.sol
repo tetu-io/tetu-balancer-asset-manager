@@ -6,6 +6,10 @@ import "./third_party/balancer/IBVault.sol";
 import "./interfaces/IAssetManagerBase.sol";
 import "./interfaces/IRelayer.sol";
 
+/// @title Relayer
+/// @dev this contract behaves as proxy for joinPool and exitPool operations.
+///      Is able to move invested funds to the Balancer's vault and handle big exitPool requests.
+///      Need to be approved by Balancer's governance.
 contract Relayer is IRelayer {
 
   // ***************************************************
@@ -43,6 +47,7 @@ contract Relayer is IRelayer {
   //                    VIEWS
   // ***************************************************
 
+  /// @dev returns true if relayer processing rebalce request for the given pool (pool Id)
   function hasCalledPool(bytes32 poolId) external view override returns (bool) {
     return _calledPool == poolId;
   }
@@ -51,6 +56,8 @@ contract Relayer is IRelayer {
   //                    CLAIM
   // ***************************************************
 
+  /// @notice used to claim rewards from asset managers. Reward collection logic and
+  ///         reward distribution controlled by AM
   function claimAssetManagerRewards(bytes32 poolId) external override {
     (IERC20[] memory tokens, ,) = vault.getPoolTokens(poolId);
     for (uint256 i = 0; i < tokens.length; i++) {
@@ -65,6 +72,7 @@ contract Relayer is IRelayer {
   //                    JOIN/EXIT
   // ***************************************************
 
+  /// @notice a standard Balancer's vault joinPool request. Calls asset manager's rebalance logic.
   function joinPool(
     bytes32 poolId,
     address recipient,
@@ -73,6 +81,10 @@ contract Relayer is IRelayer {
     vault.joinPool(poolId, msg.sender, recipient, request);
   }
 
+  /// @notice standard Balancer's vault exitPool request with the extra param minCashBalances.
+  ///         minCashBalances - amounts of tokens for withdraw (exitPool). Used to calculate if AM should return tokens
+  ///                           to the Balancer's vault to handle this request.
+  ///         Calls asset manager's rebalance logic.
   function exitPool(
     bytes32 poolId,
     address payable recipient,
@@ -86,6 +98,7 @@ contract Relayer is IRelayer {
   //                 REBALANCE
   // ***************************************************
 
+  /// @dev used by joinPool and exitPool to handle big exitPool and 'soft' rebalance assets (invest/devest) via AM.
   modifier rebalance(
     bytes32 poolId,
     IAsset[] memory assets,
@@ -100,6 +113,8 @@ contract Relayer is IRelayer {
     _calledPool = _EMPTY_CALLED_POOL;
   }
 
+  /// @dev used to handle big withdraws by devesting required funds via AM and to update Balancer's vault with the
+  ///      latest state of funds controlled by AM.
   function _ensureCashBalance(
     bytes32 poolId,
     IERC20[] memory tokens,
@@ -124,6 +139,7 @@ contract Relayer is IRelayer {
     }
   }
 
+  /// @dev calls 'soft' rebalace for attached AM.
   function _rebalance(bytes32 poolId, IERC20[] memory tokens) internal {
     for (uint256 i = 0; i < tokens.length; i++) {
       (, , , address assetManager) = vault.getPoolTokenInfo(poolId, tokens[i]);

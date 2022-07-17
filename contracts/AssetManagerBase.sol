@@ -40,7 +40,6 @@ abstract contract AssetManagerBase is IAssetManagerBase {
   // ***************************************************
   //                CONSTRUCTOR/INITIALIZATION
   // ***************************************************
-
   constructor(IBVault balancerVault_, IERC20 underlying_) {
     require(address(underlying_) != address(0), "zero token");
     require(address(balancerVault_) != address(0), "zero balancer vault");
@@ -54,6 +53,8 @@ abstract contract AssetManagerBase is IAssetManagerBase {
 
   /// @dev Should be called in same transaction as deployment through a factory contract
   /// @param pId - the id of the pool
+  /// @notice We need to provide AM during pool creation but AM should know the PoolID.
+  ///   To resolve this cyclic reference we need to have a separate method to store poolId
   //todo add factory
   function initialize(bytes32 pId) external override {
     require(poolId == bytes32(0), "Already initialised");
@@ -65,11 +66,13 @@ abstract contract AssetManagerBase is IAssetManagerBase {
   //                RESTRICTIONS/MODIFIERS
   // ***************************************************
 
+  /// @dev Reverts if called by any account other than the pool.
   modifier onlyPoolContract() {
     require(msg.sender == getPoolAddress(), "Only callable by pool");
     _;
   }
 
+  /// @dev Reverts if called by any account other than the Rebalancer (relayer).
   modifier onlyPoolRebalancer() {
     require(
       msg.sender == address(IRelayedBasePool(getPoolAddress()).getRelayer()),
@@ -78,6 +81,7 @@ abstract contract AssetManagerBase is IAssetManagerBase {
     _;
   }
 
+  /// @dev Reverts if called with incorrect poolId.
   modifier withCorrectPool(bytes32 pId) {
     require(pId == poolId, "AssetManager called with incorrect poolId");
     _;
@@ -87,16 +91,22 @@ abstract contract AssetManagerBase is IAssetManagerBase {
   //                      VIEWS
   // ***************************************************
 
+  /// @notice return underlying token which managed by AssetManager
   function getToken() external view override returns (IERC20) {
     return underlying;
   }
 
+  /// @notice return attached pool address for this Asset Manager
   function getPoolAddress() public view returns (address addr) {
     uint256 shifted = uint256(poolId) / 2 ** (8 * 12);
     return address(uint160(shifted));
   }
 
-  /// @dev Investment configuration todo extend comment
+  /// @dev returns amount of tokens which will be invested or devested during rebalace action.
+  /// Could be negative number in case of devest.
+  /// @notice return amount of underlying token which can be invested by AM according to configuration.
+  /// After the rebalance expected to be 0
+  /// e.g target is 80% and current investment is 60% thus 20% of pool TVL can be invested.
   function maxInvestableBalance(bytes32 pId) external view override withCorrectPool(pId) returns (int256) {
     uint256 aum = _getAUM();
     (uint256 poolCash, , ,) = balancerVault.getPoolTokenInfo(poolId, underlying);
@@ -104,10 +114,14 @@ abstract contract AssetManagerBase is IAssetManagerBase {
     return int256(((poolCash + aum) * _config.targetPercentage) / _CONFIG_PRECISION) - int256(aum);
   }
 
+  /// @param pId - the poolId
+  /// @notice return investment config
   function getInvestmentConfig(bytes32 pId) external view override withCorrectPool(pId) returns (InvestmentConfig memory) {
     return _config;
   }
 
+  /// @param pId - the poolId
+  /// @notice shows amount of tokens in Balancer Vault and controlled by the AM.
   function getPoolBalances(bytes32 pId)
   external view override withCorrectPool(pId) returns (uint256 poolCash, uint256 poolManaged) {
     (poolCash, poolManaged) = _getPoolBalances(_getAUM());
@@ -119,15 +133,15 @@ abstract contract AssetManagerBase is IAssetManagerBase {
     poolManaged = aum;
   }
 
-  /**
- * @notice Determines whether the pool should rebalance given the provided balances
-   */
+  /// @notice Determines whether the pool should rebalance given the provided balances
   function shouldRebalance(uint256 cash, uint256 managed) public view override returns (bool) {
     uint256 investedPercentage = (cash * _CONFIG_PRECISION) / (cash + managed);
     InvestmentConfig memory config = _config;
     return investedPercentage > config.upperCriticalPercentage || investedPercentage < config.lowerCriticalPercentage;
   }
 
+  /// @param pId - the poolId
+  /// @notice shows amount of tokens under management by this AM (currently invested)
   function getAUM(bytes32 pId) external view override withCorrectPool(pId) returns (uint256) {
     return _getAUM();
   }
@@ -138,6 +152,12 @@ abstract contract AssetManagerBase is IAssetManagerBase {
   //                 POOL ACTIONS
   // ***************************************************
 
+  /// @notice pool should be configured with following params:
+  ///   targetPercentage - amount of tokens in percents with _CONFIG_PRECISION which will be invested by the AM
+  ///    upperCriticalPercentage - when rebalace called without force flag affects shouldRebalance function.
+  ///       If invested amount is greater than this amount in percents, shouldRebalance returns true.
+  //    lowerCriticalPercentage - when rebalace called without force flag affects shouldRebalance function.
+  ///       If invested amount is lower than this amount in percents, shouldRebalance returns true.
   function setConfig(bytes32 pId, bytes memory rawConfig) external override withCorrectPool(pId) onlyPoolContract {
     InvestmentConfig memory config = abi.decode(rawConfig, (InvestmentConfig));
 
@@ -231,7 +251,8 @@ abstract contract AssetManagerBase is IAssetManagerBase {
   //               without restrictions
   // ***************************************************
 
-  /// @dev Reporting todo extend comment
+  /// @dev Is used to update Balancer's vault with amount controlled by AM.
+  /// E.g. if amount of tokens increased due to compounded investments.
   function updateBalanceOfPool(bytes32 pId) external override withCorrectPool(pId) {
     uint256 managedBalance = _getAUM();
 

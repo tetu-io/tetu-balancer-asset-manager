@@ -8,6 +8,9 @@ pragma solidity ^0.7.0;
 
 pragma experimental ABIEncoderV2;
 
+/// @title TetuRelayedStablePool
+/// @dev TetuRelayedStablePool is a extension of standard Balancer's stable pool with restricted joinPool and exitPool
+///      Those methods should be called by the Relayer only to allow usage of Asset managers (rebalancing logic)
 contract TetuRelayedStablePool is TetuStablePool, IRelayedBasePool {
   using TetuStablePoolUserDataHelpers for bytes;
 
@@ -55,10 +58,12 @@ contract TetuRelayedStablePool is TetuStablePool, IRelayedBasePool {
     _relayer = IBasePoolRelayer(relayer);
   }
 
+  /// @dev returns relayer attached to this pool
   function getRelayer() public view override returns (IBasePoolRelayer) {
     return _relayer;
   }
 
+  /// @dev hook to restrict direct joinPool requests. Only Relayer can join this pool
   function onJoinPool(
     bytes32 poolId,
     address sender,
@@ -71,6 +76,7 @@ contract TetuRelayedStablePool is TetuStablePool, IRelayedBasePool {
     return super.onJoinPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
   }
 
+  /// @dev hook to restrict direct exitPool requests. Only Relayer can exit from this pool
   function onExitPool(
     bytes32 poolId,
     address sender,

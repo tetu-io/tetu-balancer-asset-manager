@@ -10,7 +10,9 @@ import "./interfaces/IGauge.sol";
 import "./AssetManagerBase.sol";
 
 
-// todo description
+/// @title ERC4626AssetManager
+/// @dev ERC4626AssetManager can invest funds to ERC4626 vault and collect the rewards from gauge.
+///      Currently configured to work with TetuVaultV2.
 contract ERC4626AssetManager is AssetManagerBase {
   using SafeERC20 for IERC20;
 
@@ -19,6 +21,8 @@ contract ERC4626AssetManager is AssetManagerBase {
   // ***************************************************
 
   address public immutable erc4626Vault;
+
+  /// @notice rewards from gauge are transferred to this address
   address public immutable rewardCollector;
   IGauge public immutable gauge;
 

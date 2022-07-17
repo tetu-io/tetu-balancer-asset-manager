@@ -14,6 +14,10 @@ import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
 import "@balancer-labs/v2-pool-stable/contracts/StableMath.sol";
 import "./TetuStablePoolUserDataHelpers.sol";
 
+/// @title TetuStablePool
+/// @dev TetuStablePool is a copy of Balancer's stable pool with allowed asset managers.
+///      Current Balancer's version restricts AM usage.
+///      The only difference in constructor (extra param 'assetManagers' passed to the BasePool).
 
 contract TetuStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRateProvider {
   using WordCodec for bytes32;
