@@ -32,7 +32,7 @@ contract Relayer is IRelayer {
   //                  EVENTS
   // ***************************************************
 
-  // todo
+  /// @dev all events are produced either AssetManagers or Balancer's vault.
 
   // ***************************************************
   //                CONSTRUCTOR

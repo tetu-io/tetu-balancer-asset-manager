@@ -36,6 +36,10 @@ abstract contract AssetManagerBase is IAssetManagerBase {
   // ***************************************************
 
   event InvestmentConfigSet(uint64 targetPercentage, uint64 lowerCriticalPercentage, uint64 upperCriticalPercentage);
+  event AssetManagerInitialized(bytes32 poolId);
+  event CapitalIn(bytes32 poolId);
+  event CapitalOut(bytes32 poolId);
+  event PoolBalanceUpdated(bytes32 poolId, uint256 newAUM);
 
   // ***************************************************
   //                CONSTRUCTOR/INITIALIZATION
@@ -60,6 +64,7 @@ abstract contract AssetManagerBase is IAssetManagerBase {
     require(poolId == bytes32(0), "Already initialised");
     require(pId != bytes32(0), "Pool id cannot be empty");
     poolId = pId;
+    emit AssetManagerInitialized(poolId);
   }
 
   // ***************************************************
@@ -266,11 +271,12 @@ abstract contract AssetManagerBase is IAssetManagerBase {
     ops[0] = (transfer);
 
     balancerVault.managePoolBalance(ops);
+    emit PoolBalanceUpdated(poolId, managedBalance);
   }
 
-  /**
-   * @notice Rebalances funds between pool and asset manager to maintain target investment percentage.
-   */
+  /// @param force - if true rebalaces pool immediately to target value from AM config,
+  ///        otherwise checks shouldRebalance first.
+  /// @notice Rebalances funds between pool and asset manager to maintain target investment percentage.
   function rebalance(bytes32 pId, bool force) external override withCorrectPool(pId) {
     if (force) {
       _rebalance();

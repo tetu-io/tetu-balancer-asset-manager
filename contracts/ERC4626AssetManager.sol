@@ -30,6 +30,10 @@ contract ERC4626AssetManager is AssetManagerBase {
   //                  EVENTS
   // ***************************************************
 
+  event Invested(uint256 amount);
+  event Devested(uint256 amount);
+  event RewardClaimed(address token, uint256 amount);
+
   // ***************************************************
   //                CONSTRUCTOR
   // ***************************************************
@@ -80,6 +84,7 @@ contract ERC4626AssetManager is AssetManagerBase {
     IERC4626(erc4626Vault).deposit(balance, address(this));
     uint256 shares = IERC20(erc4626Vault).balanceOf(address(this));
     require(shares > 0, "AM should receive shares after the deposit");
+    emit Invested(balance);
     return balance;
   }
 
@@ -97,6 +102,7 @@ contract ERC4626AssetManager is AssetManagerBase {
       uint256 divested = newBalance - existingBalance;
       // todo adjust msg or revert if not enough
       require(divested > 0, "AM should receive requested tokens after the withdraw");
+      emit Devested(divested);
       return divested;
     }
     return 0;
@@ -111,6 +117,7 @@ contract ERC4626AssetManager is AssetManagerBase {
         uint256 bal = IERC20(rt).balanceOf(address(this));
         if (bal > 0) {
           rt.safeTransfer(rewardCollector, bal);
+          emit RewardClaimed(address(rt), bal);
         }
       }
     }
