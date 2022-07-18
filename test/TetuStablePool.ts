@@ -1,18 +1,13 @@
 import chai from "chai"
 import chaiAsPromised from "chai-as-promised"
-import {solidity} from "ethereum-waffle"
-import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers"
-import {ethers} from "hardhat"
-import {
-  Authorizer,
-  MockERC20,
-  Relayer,
-  TetuRelayedStablePool, Vault
-} from "../typechain"
-import {BigNumber} from "ethers"
-import {bn, Misc, PoolSpecialization} from "./utils/Misc"
+import { solidity } from "ethereum-waffle"
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
+import { ethers } from "hardhat"
+import { Authorizer, MockERC20, Relayer, TetuRelayedStablePool, Vault } from "../typechain"
+import { BigNumber } from "ethers"
+import { bn, Misc, PoolSpecialization } from "./utils/Misc"
 
-const {expect} = chai
+const { expect } = chai
 chai.use(chaiAsPromised)
 chai.use(solidity)
 
@@ -45,20 +40,17 @@ describe("TetuStablePool tests", function () {
     const WETH = await ethers.getContractFactory("MockERC20")
     mockWeth = await WETH.deploy("WETH", "WETH", 18)
     tokens = Misc.sortTokens([mockUsdc, mockDai])
-
   })
 
   beforeEach(async function () {
     const AuthFact = await ethers.getContractFactory("Authorizer")
-    const authorizer = await AuthFact.deploy(deployer.address) as Authorizer
-
+    const authorizer = (await AuthFact.deploy(deployer.address)) as Authorizer
 
     const BalVaultFactory = await ethers.getContractFactory("Vault")
     balancerVault = (await BalVaultFactory.deploy(authorizer.address, mockWeth.address, 0, 0)) as Vault
 
     const RelayerFact = await ethers.getContractFactory("Relayer")
     relayer = await RelayerFact.deploy(balancerVault.address)
-
 
     const TetuStablePoolFact = await ethers.getContractFactory("TetuRelayedStablePool")
     stablePool = (await TetuStablePoolFact.deploy(
@@ -138,7 +130,7 @@ describe("TetuStablePool tests", function () {
       }
       await relayer.connect(user).joinPool(poolId, user.address, joinPoolRequest)
       const tokenInfo1 = await balancerVault.getPoolTokenInfo(poolId, tokens[0].address)
-      const expectedToken0Balance = bn('1000000000000000000').add(initialBalances[0])
+      const expectedToken0Balance = bn("1000000000000000000").add(initialBalances[0])
       expect(tokenInfo1[0]).is.eq(expectedToken0Balance)
       expect(tokenInfo1[1]).is.eq(0)
 
@@ -207,145 +199,151 @@ describe("TetuStablePool tests", function () {
       expect(await stablePool.getRelayer()).is.eq(relayer.address)
     })
 
-    it('sets scaling factors', async () => {
+    it("sets scaling factors", async () => {
       const poolScalingFactors = await stablePool.getScalingFactors()
-      const tokenScalingFactors = [BigNumber.from(10).pow(18), BigNumber.from(10).pow(18)];
-      expect(poolScalingFactors).to.deep.equal(tokenScalingFactors);
-    });
+      const tokenScalingFactors = [BigNumber.from(10).pow(18), BigNumber.from(10).pow(18)]
+      expect(poolScalingFactors).to.deep.equal(tokenScalingFactors)
+    })
 
-    it('reverts if there is a single token', async () => {
+    it("reverts if there is a single token", async () => {
       const TetuStablePoolFact = await ethers.getContractFactory("TetuRelayedStablePool")
-      await expect(TetuStablePoolFact.deploy(
-        balancerVault.address,
-        poolName,
-        poolSymbol,
-        [tokens[0].address],
-        ampParam,
-        swapFee,
-        "0",
-        "0",
-        deployer.address,
-        relayer.address,
-        [ethers.constants.AddressZero, ethers.constants.AddressZero]
-      )).is.revertedWith('BAL#200')
-    });
+      await expect(
+        TetuStablePoolFact.deploy(
+          balancerVault.address,
+          poolName,
+          poolSymbol,
+          [tokens[0].address],
+          ampParam,
+          swapFee,
+          "0",
+          "0",
+          deployer.address,
+          relayer.address,
+          [ethers.constants.AddressZero, ethers.constants.AddressZero]
+        )
+      ).is.revertedWith("BAL#200")
+    })
 
-    describe('creation', () => {
-      context('when the creation succeeds', () => {
-        it('sets the vault', async () => {
+    describe("creation", () => {
+      context("when the creation succeeds", () => {
+        it("sets the vault", async () => {
           expect(await stablePool.getVault()).to.equal(balancerVault.address)
         })
 
-        it('uses general specialization', async () => {
+        it("uses general specialization", async () => {
           const [address, specialization] = await balancerVault.getPool(poolId)
-          expect(address).to.equal(stablePool.address);
+          expect(address).to.equal(stablePool.address)
           expect(specialization).to.equal(PoolSpecialization.TwoTokenPool)
         })
 
-        it('registers tokens in the vault', async () => {
-          const {tokens, balances} = await balancerVault.getPoolTokens(poolId);
-          expect(tokens).to.have.members(tokens);
+        it("registers tokens in the vault", async () => {
+          const { tokens, balances } = await balancerVault.getPoolTokens(poolId)
+          expect(tokens).to.have.members(tokens)
           expect(balances[0]).is.eq(bn(0))
           expect(balances[1]).is.eq(bn(0))
-        });
+        })
 
-        it('starts with no BPT', async () => {
+        it("starts with no BPT", async () => {
           expect(await stablePool.totalSupply()).to.be.equal(0)
         })
 
-        it('sets the asset managers', async () => {
+        it("sets the asset managers", async () => {
           const [, , , am0] = await balancerVault.getPoolTokenInfo(poolId, tokens[0].address)
           const [, , , am1] = await balancerVault.getPoolTokenInfo(poolId, tokens[1].address)
           expect(am0).is.eq(ethers.constants.AddressZero)
           expect(am1).is.eq(ethers.constants.AddressZero)
         })
 
-        it('sets amplification', async () => {
-          const {value, isUpdating, precision} = await stablePool.getAmplificationParameter()
+        it("sets amplification", async () => {
+          const { value, isUpdating, precision } = await stablePool.getAmplificationParameter()
           expect(value).to.be.equal(BigNumber.from(ampParam).mul(precision))
           expect(isUpdating).to.be.false
         })
 
-        it('sets swap fee', async () => {
-          expect(await stablePool.getSwapFeePercentage()).to.equal(swapFee);
+        it("sets swap fee", async () => {
+          expect(await stablePool.getSwapFeePercentage()).to.equal(swapFee)
         })
 
-        it('sets the name', async () => {
+        it("sets the name", async () => {
           expect(await stablePool.name()).to.equal(poolName)
         })
 
-        it('sets the symbol', async () => {
+        it("sets the symbol", async () => {
           expect(await stablePool.symbol()).to.equal(poolSymbol)
         })
 
-        it('sets the decimals', async () => {
+        it("sets the decimals", async () => {
           expect(await stablePool.decimals()).to.equal(18)
         })
       })
 
-      context('when the creation fails', () => {
+      context("when the creation fails", () => {
         // it('reverts if there are repeated tokens', async () => {
         //   const badTokens = new TokenList(Array(numberOfTokens).fill(tokens.first));
         //   await expect(deployPool({ tokens: badTokens, fromFactory: true })).to.be.revertedWith('UNSORTED_ARRAY');
         // });
 
-        it('reverts if the swap fee is too high', async () => {
+        it("reverts if the swap fee is too high", async () => {
           const badSwapFeePercentage = bn(10).pow(18).add(1)
           const TetuStablePoolFact = await ethers.getContractFactory("TetuRelayedStablePool")
-          await expect(TetuStablePoolFact.deploy(
-            balancerVault.address,
-            poolName,
-            poolSymbol,
-            [tokens[0].address, tokens[1].address],
-            ampParam,
-            badSwapFeePercentage,
-            "0",
-            "0",
-            deployer.address,
-            relayer.address,
-            [ethers.constants.AddressZero, ethers.constants.AddressZero]
-          )).is.revertedWith('BAL#202')
+          await expect(
+            TetuStablePoolFact.deploy(
+              balancerVault.address,
+              poolName,
+              poolSymbol,
+              [tokens[0].address, tokens[1].address],
+              ampParam,
+              badSwapFeePercentage,
+              "0",
+              "0",
+              deployer.address,
+              relayer.address,
+              [ethers.constants.AddressZero, ethers.constants.AddressZero]
+            )
+          ).is.revertedWith("BAL#202")
         })
 
-
-        it('reverts if amplification coefficient is too high', async () => {
+        it("reverts if amplification coefficient is too high", async () => {
           const highAmp = bn(5001)
 
           const TetuStablePoolFact = await ethers.getContractFactory("TetuRelayedStablePool")
-          await expect(TetuStablePoolFact.deploy(
-            balancerVault.address,
-            poolName,
-            poolSymbol,
-            [tokens[0].address, tokens[1].address],
-            highAmp,
-            swapFee,
-            "0",
-            "0",
-            deployer.address,
-            relayer.address,
-            [ethers.constants.AddressZero, ethers.constants.AddressZero]
-          )).is.revertedWith('BAL#301')
+          await expect(
+            TetuStablePoolFact.deploy(
+              balancerVault.address,
+              poolName,
+              poolSymbol,
+              [tokens[0].address, tokens[1].address],
+              highAmp,
+              swapFee,
+              "0",
+              "0",
+              deployer.address,
+              relayer.address,
+              [ethers.constants.AddressZero, ethers.constants.AddressZero]
+            )
+          ).is.revertedWith("BAL#301")
         })
 
-        it('reverts if amplification coefficient is too low', async () => {
+        it("reverts if amplification coefficient is too low", async () => {
           const lowAmp = bn(0)
           const TetuStablePoolFact = await ethers.getContractFactory("TetuRelayedStablePool")
-          await expect(TetuStablePoolFact.deploy(
-            balancerVault.address,
-            poolName,
-            poolSymbol,
-            [tokens[0].address, tokens[1].address],
-            lowAmp,
-            swapFee,
-            "0",
-            "0",
-            deployer.address,
-            relayer.address,
-            [ethers.constants.AddressZero, ethers.constants.AddressZero]
-          )).is.revertedWith('BAL#300')
+          await expect(
+            TetuStablePoolFact.deploy(
+              balancerVault.address,
+              poolName,
+              poolSymbol,
+              [tokens[0].address, tokens[1].address],
+              lowAmp,
+              swapFee,
+              "0",
+              "0",
+              deployer.address,
+              relayer.address,
+              [ethers.constants.AddressZero, ethers.constants.AddressZero]
+            )
+          ).is.revertedWith("BAL#300")
         })
       })
     })
-
   })
 })

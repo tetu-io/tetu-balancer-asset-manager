@@ -9,14 +9,14 @@ export type InvestmentConfig = {
 }
 
 export enum PoolSpecialization {
-    GeneralPool = 0,
-    MinimalSwapInfoPool = 1,
-    TwoTokenPool = 2
+  GeneralPool = 0,
+  MinimalSwapInfoPool = 1,
+  TwoTokenPool = 2
 }
 
 export const bn = (x: BigNumberish): BigNumber => {
-  return BigNumber.from(x);
-};
+  return BigNumber.from(x)
+}
 
 export class Misc {
   public static readonly SECONDS_OF_DAY = 60 * 60 * 24
