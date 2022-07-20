@@ -223,6 +223,5 @@ describe("TetuStablePool tests", function () {
         )
       ).is.revertedWith("BAL#200")
     })
-
   })
 })

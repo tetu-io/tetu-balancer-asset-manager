@@ -14,3 +14,4 @@ ignore:
   - "contracts/test"
   - "contracts/pool_stable"
   - "contracts/third_party"
+  - "contracts/openzeppelin"
