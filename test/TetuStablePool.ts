@@ -8,7 +8,8 @@ import {
   IERC20,
   MockERC20,
   ProtocolFeesCollector,
-  Relayer, TestTetuStablePool,
+  Relayer,
+  TestTetuStablePool,
   TetuRelayedStablePool,
   Vault
 } from "../typechain"
@@ -20,7 +21,7 @@ const { expect } = chai
 chai.use(chaiAsPromised)
 chai.use(solidity)
 
-describe("TetuStablePool tests", function() {
+describe("TetuStablePool tests", function () {
   let deployer: SignerWithAddress
   let user: SignerWithAddress
   let stablePool: TestTetuStablePool
@@ -41,7 +42,7 @@ describe("TetuStablePool tests", function() {
   const pauseWindowDuration = 90 * 24 * 3600
   const bufferPeriodDuration = 30 * 24 * 3600
 
-  before(async function() {
+  before(async function () {
     ;[deployer, user] = await ethers.getSigners()
     const USDC = await ethers.getContractFactory("MockERC20")
     const mockUsdc = await USDC.deploy("USD Coin (PoS)", "USDC", 18)
@@ -78,7 +79,7 @@ describe("TetuStablePool tests", function() {
     tokens = Misc.sortTokens([mockUsdc, mockDai, mockT2, mockT3, mockT4, mockT5])
   })
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     const AuthFact = await ethers.getContractFactory("Authorizer")
     authorizer = (await AuthFact.deploy(deployer.address)) as Authorizer
 
@@ -126,8 +127,8 @@ describe("TetuStablePool tests", function() {
     await balancerVault.joinPool(poolId, deployer.address, deployer.address, joinPoolRequest)
   }
 
-  describe("General tests", function() {
-    it("Smoke test", async function() {
+  describe("General tests", function () {
+    it("Smoke test", async function () {
       expect(await stablePool.name()).is.eq(poolName)
       expect(await stablePool.symbol()).is.eq(poolSymbol)
       expect(await stablePool.getSwapFeePercentage()).is.eq(swapFee)
@@ -363,10 +364,7 @@ describe("TetuStablePool tests", function() {
         const bal1After = await tokens[1].balanceOf(deployer.address)
         expect(bal0After).is.gt(bal0Before)
         expect(bal1After).is.lt(bal1Before)
-
       })
-
-
     })
     context("given out", () => {
       it("standard given out swap", async () => {
@@ -443,7 +441,7 @@ describe("TetuStablePool tests", function() {
       await feeCollector.setSwapFeePercentage(bn(10).pow(15))
 
       // init with different amount of tokens
-      let initialBalances = [BigNumber.from(10).pow(18), (BigNumber.from(10).pow(18)).add(1)]
+      let initialBalances = [BigNumber.from(10).pow(18), BigNumber.from(10).pow(18).add(1)]
       let tokenAddresses1 = [tokens[0].address, tokens[1].address]
       await tokens[0].approve(balancerVault.address, initialBalances[0])
       await tokens[1].approve(balancerVault.address, initialBalances[1])
@@ -549,17 +547,12 @@ describe("TetuStablePool tests", function() {
         [BPT_IN_FOR_EXACT_TOKENS_OUT, bptBefore]
       )
 
-      await balancerVault.exitPool(
-        poolId,
-        deployer.address,
-        deployer.address,
-        {
-          assets: [tokens[0].address, tokens[1].address],
-          minAmountsOut: Array(tokensInPool).fill(0),
-          userData: exitUserData,
-          toInternalBalance: false
-        }
-      )
+      await balancerVault.exitPool(poolId, deployer.address, deployer.address, {
+        assets: [tokens[0].address, tokens[1].address],
+        minAmountsOut: Array(tokensInPool).fill(0),
+        userData: exitUserData,
+        toInternalBalance: false
+      })
       const bptAfter = await stablePool.balanceOf(deployer.address)
       expect(bptAfter).is.eq(0)
     })
@@ -598,7 +591,12 @@ describe("TetuStablePool tests", function() {
         pauseWindowDuration,
         bufferPeriodDuration,
         deployer.address,
-        [ethers.constants.AddressZero, ethers.constants.AddressZero, ethers.constants.AddressZero, ethers.constants.AddressZero]
+        [
+          ethers.constants.AddressZero,
+          ethers.constants.AddressZero,
+          ethers.constants.AddressZero,
+          ethers.constants.AddressZero
+        ]
       )) as TestTetuStablePool
 
       poolId = await stablePool.getPoolId()
@@ -619,7 +617,13 @@ describe("TetuStablePool tests", function() {
         pauseWindowDuration,
         bufferPeriodDuration,
         deployer.address,
-        [ethers.constants.AddressZero, ethers.constants.AddressZero, ethers.constants.AddressZero, ethers.constants.AddressZero, ethers.constants.AddressZero]
+        [
+          ethers.constants.AddressZero,
+          ethers.constants.AddressZero,
+          ethers.constants.AddressZero,
+          ethers.constants.AddressZero,
+          ethers.constants.AddressZero
+        ]
       )) as TestTetuStablePool
 
       poolId = await stablePool.getPoolId()
@@ -640,7 +644,13 @@ describe("TetuStablePool tests", function() {
         pauseWindowDuration,
         bufferPeriodDuration,
         deployer.address,
-        [ethers.constants.AddressZero, ethers.constants.AddressZero, ethers.constants.AddressZero, ethers.constants.AddressZero, ethers.constants.AddressZero]
+        [
+          ethers.constants.AddressZero,
+          ethers.constants.AddressZero,
+          ethers.constants.AddressZero,
+          ethers.constants.AddressZero,
+          ethers.constants.AddressZero
+        ]
       )) as TestTetuStablePool
 
       poolId = await stablePool.getPoolId()
@@ -680,14 +690,11 @@ describe("TetuStablePool tests", function() {
       const sf2 = await stablePool.scalingFactors()
       expect(sf2[0]).is.eq("1000000000000000000")
 
-      const now = Math.round(new Date().getTime()/1000)
+      const now = Math.round(new Date().getTime() / 1000)
 
       await stablePool.startAmplificationParameterUpdate("400", BigNumber.from(now).add(BigNumber.from(360000)))
       const result = await stablePool.getAmplificationParameter()
       expect(result.value).is.eq("500000")
-
     })
-
   })
-
 })

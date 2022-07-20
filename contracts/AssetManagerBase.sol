@@ -54,7 +54,6 @@ abstract contract AssetManagerBase is IAssetManagerBase {
     underlying = underlying_;
   }
 
-
   /// @dev Should be called in same transaction as deployment through a factory contract
   /// @param pId - the id of the pool
   /// @notice We need to provide AM during pool creation but AM should know the PoolID.
@@ -103,7 +102,7 @@ abstract contract AssetManagerBase is IAssetManagerBase {
 
   /// @notice return attached pool address for this Asset Manager
   function getPoolAddress() public view returns (address addr) {
-    uint256 shifted = uint256(poolId) / 2 ** (8 * 12);
+    uint256 shifted = uint256(poolId) / 2**(8 * 12);
     return address(uint160(shifted));
   }
 
@@ -114,26 +113,37 @@ abstract contract AssetManagerBase is IAssetManagerBase {
   /// e.g target is 80% and current investment is 60% thus 20% of pool TVL can be invested.
   function maxInvestableBalance(bytes32 pId) external view override withCorrectPool(pId) returns (int256) {
     uint256 aum = _getAUM();
-    (uint256 poolCash, , ,) = balancerVault.getPoolTokenInfo(poolId, underlying);
+    (uint256 poolCash, , , ) = balancerVault.getPoolTokenInfo(poolId, underlying);
     // Calculate the managed portion of funds locally as the Vault is unaware of returns
     return int256(((poolCash + aum) * _config.targetPercentage) / _CONFIG_PRECISION) - int256(aum);
   }
 
   /// @param pId - the poolId
   /// @notice return investment config
-  function getInvestmentConfig(bytes32 pId) external view override withCorrectPool(pId) returns (InvestmentConfig memory) {
+  function getInvestmentConfig(bytes32 pId)
+    external
+    view
+    override
+    withCorrectPool(pId)
+    returns (InvestmentConfig memory)
+  {
     return _config;
   }
 
   /// @param pId - the poolId
   /// @notice shows amount of tokens in Balancer Vault and controlled by the AM.
   function getPoolBalances(bytes32 pId)
-  external view override withCorrectPool(pId) returns (uint256 poolCash, uint256 poolManaged) {
+    external
+    view
+    override
+    withCorrectPool(pId)
+    returns (uint256 poolCash, uint256 poolManaged)
+  {
     (poolCash, poolManaged) = _getPoolBalances(_getAUM());
   }
 
   function _getPoolBalances(uint256 aum) public view returns (uint256 poolCash, uint256 poolManaged) {
-    (poolCash,,,) = balancerVault.getPoolTokenInfo(poolId, underlying);
+    (poolCash, , , ) = balancerVault.getPoolTokenInfo(poolId, underlying);
     // Calculate the managed portion of funds locally as the Vault is unaware of returns
     poolManaged = aum;
   }
@@ -197,7 +207,6 @@ abstract contract AssetManagerBase is IAssetManagerBase {
   // ***************************************************
   //              DEPOSIT / WITHDRAW / CLAIM
   // ***************************************************
-
 
   /// @dev Transfers capital into the asset manager, and then invests it
   /// @param amount - the amount of tokens being deposited
@@ -306,5 +315,4 @@ abstract contract AssetManagerBase is IAssetManagerBase {
 
     emit Rebalance(poolId);
   }
-
 }

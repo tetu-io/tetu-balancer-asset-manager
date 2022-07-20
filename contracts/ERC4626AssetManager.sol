@@ -9,7 +9,6 @@ import "./interfaces/IERC4626.sol";
 import "./interfaces/IGauge.sol";
 import "./AssetManagerBase.sol";
 
-
 /// @title ERC4626AssetManager
 /// @dev ERC4626AssetManager can invest funds to ERC4626 vault and collect the rewards from gauge.
 ///      Currently configured to work with TetuVaultV2.
@@ -51,7 +50,7 @@ contract ERC4626AssetManager is AssetManagerBase {
     rewardCollector = rewardCollector_;
     gauge = IGauge(gauge_);
 
-    IERC20(underlying_).safeIncreaseAllowance(erc4626Vault_, type(uint).max);
+    IERC20(underlying_).safeIncreaseAllowance(erc4626Vault_, type(uint256).max);
   }
 
   // ***************************************************
@@ -59,7 +58,7 @@ contract ERC4626AssetManager is AssetManagerBase {
   // ***************************************************
 
   /**
- * @dev Checks balance of managed assets
+   * @dev Checks balance of managed assets
    */
   function _getAUM() internal view override returns (uint256) {
     return IERC4626(erc4626Vault).convertToAssets(IERC20(erc4626Vault).balanceOf(address(this)));
