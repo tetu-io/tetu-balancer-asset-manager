@@ -12,6 +12,8 @@ contract MockTetuVaultV2 is IERC4626, ERC20 {
   IERC20 public asset;
   bool isReturnTokens;
   bool isReturnShares;
+  uint constant feeDen = 100;
+  uint feeNom = 100;
 
   constructor(
     address _asset,
@@ -26,8 +28,17 @@ contract MockTetuVaultV2 is IERC4626, ERC20 {
     asset = IERC20(_asset);
   }
 
+  function setFeeNom(uint256 _feeNom) external {
+    feeNom = _feeNom;
+  }
+
   function deposit(uint assets, address receiver) external override returns (uint shares){
-    asset.safeTransferFrom(msg.sender, address(this), assets);
+    uint fee = assets * feeNom / feeDen;
+
+    asset.safeTransferFrom(msg.sender, address(this), assets - fee);
+    // fee simulation
+    asset.safeTransferFrom(msg.sender, address(0), fee);
+
     if (isReturnShares) {
       _mint(receiver, assets);
     }
@@ -66,7 +77,7 @@ contract MockTetuVaultV2 is IERC4626, ERC20 {
     return shares;
   }
 
-  function totalAssets() external view override returns (uint){
+  function totalAssets() public view override returns (uint){
     return asset.balanceOf(address(this));
   }
 
@@ -74,8 +85,8 @@ contract MockTetuVaultV2 is IERC4626, ERC20 {
     return assets;
   }
 
-  function convertToAssets(uint shares) external pure override returns (uint){
-    return shares;
+  function convertToAssets(uint shares) external view override returns (uint){
+   return totalSupply == 0 ? shares : (shares * totalAssets()) / totalSupply;
   }
 
   function previewDeposit(uint assets) external pure override returns (uint){

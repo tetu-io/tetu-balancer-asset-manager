@@ -392,6 +392,19 @@ describe("ERC4626AssetManager tests", function () {
       const t1ToDeposit = BigNumber.from(10).mul(BigNumber.from(10).pow(18))
       await expect(deposit(user, tokens, [t0ToDeposit, t1ToDeposit])).is.rejectedWith("Rebalancing relayer reentered")
     })
+
+    it("AM should properly calculate amounts for vault with fee", async function () {
+      await initPool(tokens)
+      await tetuVault.setFeeNom(BigNumber.from(10))
+      await assetManager.rebalance(poolId, false)
+
+      let poolManaged
+      let poolCash
+      ;[poolCash , poolManaged] = await assetManager.getPoolBalances(poolId)
+      expect(poolCash).is.eq(BigNumber.from("20000000000000000000"))
+      // 80000000000000000000 - 10%
+      expect(poolManaged).is.eq(BigNumber.from("72000000000000000000"))
+    })
   })
 
   describe("Withdraw", function () {

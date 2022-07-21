@@ -58,7 +58,6 @@ abstract contract AssetManagerBase is IAssetManagerBase {
   /// @param pId - the id of the pool
   /// @notice We need to provide AM during pool creation but AM should know the PoolID.
   ///   To resolve this cyclic reference we need to have a separate method to store poolId
-  //todo add factory
   function initialize(bytes32 pId) external override {
     require(poolId == bytes32(0), "Already initialised");
     require(pId != bytes32(0), "Pool id cannot be empty");
