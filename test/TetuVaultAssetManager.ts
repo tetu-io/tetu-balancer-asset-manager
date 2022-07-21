@@ -63,7 +63,9 @@ describe("ERC4626AssetManager tests", function () {
       userData: initUserData,
       fromInternalBalance: false
     }
-    await balancerVault.joinPool(poolId, deployer.address, deployer.address, joinPoolRequest)
+    const tx = await balancerVault.joinPool(poolId, deployer.address, deployer.address, joinPoolRequest)
+    const receipt = await tx.wait()
+    expect(receipt.gasUsed).is.lt(320000, "Pool Init transaction consumes more gas than expected")
   }
 
   const deposit = async (depositor: SignerWithAddress, tokens: MockERC20[], depositAmounts: BigNumberish[]) => {
@@ -84,7 +86,9 @@ describe("ERC4626AssetManager tests", function () {
       userData: initUserData,
       fromInternalBalance: false
     }
-    await relayer.connect(depositor).joinPool(poolId, depositor.address, joinPoolRequest)
+    const tx = await relayer.connect(depositor).joinPool(poolId, depositor.address, joinPoolRequest)
+    const receipt = await tx.wait()
+    expect(receipt.gasUsed).is.lt(480000, "Deposit transaction consumes more gas than expected")
   }
 
   const setupTestCase = async (
@@ -289,6 +293,7 @@ describe("ERC4626AssetManager tests", function () {
       await initPool(tokens)
       await expect(assetManager.rebalance(poolId, false)).is.rejectedWith("AM should receive shares after the deposit")
     })
+
     it("AM should not withdraw from tetu vault if vault not returns tokens", async function () {
       await setupTestCase(true, false)
       await initPool(tokens)
@@ -316,7 +321,10 @@ describe("ERC4626AssetManager tests", function () {
 
       expect(await stablePool.balanceOf(user.address)).is.not.equal(0)
 
-      await assetManager.rebalance(poolId, false)
+      const tx = await assetManager.rebalance(poolId, false)
+      const receipt = await tx.wait()
+      expect(receipt.gasUsed).is.lt(70000, "Pool Rebalance transaction consumes more gas than expected")
+
       const balances = await balancerVault.getPoolTokenInfo(poolId, tokens[0].address)
       const expectedToBeInTetuVault = t0InitialBalance
         .add(t0ToDeposit)
@@ -431,7 +439,7 @@ describe("ERC4626AssetManager tests", function () {
         [BPT_IN_FOR_EXACT_TOKENS_OUT, [token0ToWithdraw, BigNumber.from(0)], bptBalanceBefore]
       )
 
-      await relayer.connect(user).exitPool(
+      const tx = await relayer.connect(user).exitPool(
         poolId,
         user.address,
         {
@@ -442,6 +450,9 @@ describe("ERC4626AssetManager tests", function () {
         },
         [token0ToWithdraw, 0]
       )
+      const receipt = await tx.wait()
+      expect(receipt.gasUsed).is.lt(430000, "Pool withdraw transaction consumes more gas than expected")
+
       const token0BalAfter = await tokens[0].balanceOf(user.address)
       expect(token0BalAfter).is.eq(token0BalBefore.add(token0ToWithdraw))
     })

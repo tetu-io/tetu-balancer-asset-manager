@@ -13,7 +13,7 @@ contract MockTetuVaultV2 is IERC4626, ERC20 {
   bool isReturnTokens;
   bool isReturnShares;
   uint constant feeDen = 100;
-  uint feeNom = 100;
+  uint feeNom = 0;
 
   constructor(
     address _asset,
