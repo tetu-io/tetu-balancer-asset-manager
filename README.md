@@ -1,7 +1,16 @@
 ![Contracts](tetu_contracts.svg)
-## Tetu Swap V2 contracts (balancer based)
+## Tetu implementation of Rebalancig relayer asset manager for the balancer protocol
 
-### todo: add diagram and description
+Main idea is to allow Asset manager to invest funds available in pool and earn extra rewards.
+### Relayer
+Realyer acts as proxy for user deposit and withdraw operations. It allows handling big withdraws.
+Also, relayer can rebalance assets during the deposit and withdraw operations.
+
+### Asset Manager
+This contract encapsulate investment and reward claiming logic. In particular implementation ERC4626AssetManager is able to invest into ERC4626 vaults (tetuVaultV2) 
+
+### Tetu Stable pool
+Current balancer's stable pool didn't allow using asset managers. We updated implementation to support asset managers.
 
 [![codecov](https://codecov.io/gh/tetu-io/tetu-balancer-asset-manager/branch/main/graph/badge.svg?token=H2eWt1GKMb)](https://codecov.io/gh/tetu-io/tetu-balancer-asset-manager)
 
