@@ -1,4 +1,7 @@
 ![Contracts](tetu_contracts.svg)
+
+[![codecov](https://codecov.io/gh/tetu-io/tetu-balancer-asset-manager/branch/main/graph/badge.svg?token=H2eWt1GKMb)](https://codecov.io/gh/tetu-io/tetu-balancer-asset-manager)
+
 ## Tetu implementation of Rebalancig relayer asset manager for the balancer protocol
 
 Main idea is to allow Asset manager to invest funds available in pool and earn extra rewards.
@@ -14,8 +17,6 @@ Current balancer's stable pool didn't allow using asset managers. We updated imp
 
 ### Info
 [Detailed modifications of StablePool](dev_docs/solution.md)
-
-[![codecov](https://codecov.io/gh/tetu-io/tetu-balancer-asset-manager/branch/main/graph/badge.svg?token=H2eWt1GKMb)](https://codecov.io/gh/tetu-io/tetu-balancer-asset-manager)
 
 ## Links
 

@@ -10,8 +10,3 @@ coverage:
     patch:
       default:
         target: 100%
-ignore:
-  - "contracts/test"
-  - "contracts/pool_stable"
-  - "contracts/third_party"
-  - "contracts/openzeppelin"
