@@ -13,7 +13,7 @@ This contract encapsulate investment and reward claiming logic. In particular im
 Current balancer's stable pool didn't allow using asset managers. We updated implementation to support asset managers.
 
 ### Info
-[Detailed modifications of StablePool](docs/solution.md)
+[Detailed modifications of StablePool](dev_docs/solution.md)
 
 [![codecov](https://codecov.io/gh/tetu-io/tetu-balancer-asset-manager/branch/main/graph/badge.svg?token=H2eWt1GKMb)](https://codecov.io/gh/tetu-io/tetu-balancer-asset-manager)
 
