@@ -73,16 +73,18 @@ contract ERC4626AssetManager is AssetManagerBase {
    * @param amount - the amount of tokens being deposited
    * @return the amount deposited
    */
-  function _invest(uint256 amount, uint256) internal override returns (uint256) {
+  function _invest(uint256 amount) internal override returns (uint256) {
     uint256 balance = underlying.balanceOf(address(this));
     if (amount < balance) {
       balance = amount;
     }
+    uint256 sharesBefore = IERC20(erc4626Vault).balanceOf(address(this));
 
     // invest to ERC4626 Vault
     IERC4626(erc4626Vault).deposit(balance, address(this));
-    uint256 shares = IERC20(erc4626Vault).balanceOf(address(this));
-    require(shares > 0, "AM should receive shares after the deposit");
+    uint256 sharesAfter = IERC20(erc4626Vault).balanceOf(address(this));
+
+    require(sharesAfter > sharesBefore, "AM should receive shares after the deposit");
     emit Invested(balance);
     return balance;
   }
@@ -92,14 +94,13 @@ contract ERC4626AssetManager is AssetManagerBase {
    * @param amountUnderlying - the amount to withdraw
    * @return the number of tokens to return to the balancerVault
    */
-  function _divest(uint256 amountUnderlying, uint256) internal override returns (uint256) {
+  function _divest(uint256 amountUnderlying) internal override returns (uint256) {
     amountUnderlying = Math.min(amountUnderlying, IERC4626(erc4626Vault).maxWithdraw(address(this)));
     uint256 existingBalance = underlying.balanceOf(address(this));
     if (amountUnderlying > 0) {
       IERC4626(erc4626Vault).withdraw(amountUnderlying, address(this), address(this));
       uint256 newBalance = underlying.balanceOf(address(this));
       uint256 divested = newBalance - existingBalance;
-      // todo adjust msg or revert if not enough
       require(divested > 0, "AM should receive requested tokens after the withdraw");
       emit Devested(divested);
       return divested;
