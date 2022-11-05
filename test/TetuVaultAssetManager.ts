@@ -5,13 +5,11 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { ethers } from "hardhat"
 import {
   Authorizer,
-  ERC4626AssetManager,
   IAssetManagerBase,
   MockERC20,
-  MockGague,
-  MockTetuVaultV2,
+  MockTetuSmartVault,
   Relayer,
-  TetuRelayedStablePool,
+  TetuRelayedStablePool, TetuVaultAssetManager,
   Vault
 } from "../typechain"
 import { Misc } from "./utils/Misc"
@@ -22,19 +20,17 @@ const { expect } = chai
 chai.use(chaiAsPromised)
 chai.use(solidity)
 
-describe("ERC4626AssetManager tests", function () {
+describe("TetuVaultAssetManager tests", function () {
   let deployer: SignerWithAddress
   let user: SignerWithAddress
   let relayer: Relayer
-  let rewardCollector: SignerWithAddress
   let assetManager: IAssetManagerBase
-  let tetuVault: MockTetuVaultV2
+  let tetuVault: MockTetuSmartVault
   let stablePool: TetuRelayedStablePool
   let poolId: string
   let mockWeth: MockERC20
   let mockRewardToken: MockERC20
   let balancerVault: Vault
-  let gague: MockGague
   const targetPercentage = BigNumber.from(8).mul(BigNumber.from(10).pow(17))
   const upperCriticalPercentage = BigNumber.from(9).mul(BigNumber.from(10).pow(17))
   const lowerCriticalPercentage = BigNumber.from(1).mul(BigNumber.from(10).pow(17))
@@ -96,14 +92,10 @@ describe("ERC4626AssetManager tests", function () {
     isReturnTokens = true,
     isGage = true,
     gagueReturnAmount = BigNumber.from("100"),
-    assetManagerImplementation = "ERC4626AssetManager"
+    assetManagerImplementation = "TetuVaultAssetManager"
   ) => {
-    const VaultFactory = await ethers.getContractFactory("MockTetuVaultV2")
+    const VaultFactory = await ethers.getContractFactory("MockTetuSmartVault")
     tetuVault = await VaultFactory.deploy(tokens[0].address, "TetuT0", "TetuT0", 18, isReturnShares, isReturnTokens)
-
-    const GagueFact = await ethers.getContractFactory("MockGague")
-    gague = await GagueFact.deploy([mockRewardToken.address], [gagueReturnAmount], tetuVault.address)
-    await mockRewardToken.mint(gague.address, BigNumber.from("150"))
 
     const AuthFact = await ethers.getContractFactory("Authorizer")
     const authorizer = (await AuthFact.deploy(deployer.address)) as Authorizer
@@ -112,13 +104,11 @@ describe("ERC4626AssetManager tests", function () {
     const RelayerFact = await ethers.getContractFactory("Relayer")
     relayer = await RelayerFact.deploy(balancerVault.address)
 
-    const ERC4626AssetManagerFact = await ethers.getContractFactory(assetManagerImplementation)
-    assetManager = (await ERC4626AssetManagerFact.deploy(
+    const AssetManagerFact = await ethers.getContractFactory(assetManagerImplementation)
+    assetManager = (await AssetManagerFact.deploy(
       balancerVault.address,
       tetuVault.address,
-      tokens[0].address,
-      rewardCollector.address,
-      isGage ? gague.address : ethers.constants.AddressZero
+      tokens[0].address
     )) as IAssetManagerBase
 
     const TetuStablePoolFact = await ethers.getContractFactory("TetuRelayedStablePool")
@@ -158,7 +148,7 @@ describe("ERC4626AssetManager tests", function () {
   }
 
   before(async function () {
-    ;[deployer, user, rewardCollector] = await ethers.getSigners()
+    ;[deployer, user] = await ethers.getSigners()
     const USDC = await ethers.getContractFactory("MockERC20")
     const mockUsdc = await USDC.deploy("USD Coin (PoS)", "USDC", 18)
     await mockUsdc.mint(deployer.address, BigNumber.from(Misc.largeApproval))
@@ -224,68 +214,47 @@ describe("ERC4626AssetManager tests", function () {
     })
 
     it("poolID can't be empty during the initialization", async function () {
-      const ERC4626AssetManagerFact = await ethers.getContractFactory("ERC4626AssetManager")
-      const assetManager = (await ERC4626AssetManagerFact.deploy(
+      const AssetManagerFact = await ethers.getContractFactory("TetuVaultAssetManager")
+      const assetManager = (await AssetManagerFact.deploy(
         balancerVault.address,
         tetuVault.address,
-        tokens[0].address,
-        rewardCollector.address,
-        gague.address
-      )) as ERC4626AssetManager
+        tokens[0].address
+      )) as TetuVaultAssetManager
       const nonExistingPoolId = "0x0000000000000000000000000000000000000000000000000000000000000000"
       await expect(assetManager.initialize(nonExistingPoolId)).is.rejectedWith("Pool id cannot be empty")
     })
 
     it("underlying can't be empty during the initialization", async function () {
-      const ERC4626AssetManagerFact = await ethers.getContractFactory("ERC4626AssetManager")
+      const AssetManagerFact = await ethers.getContractFactory("TetuVaultAssetManager")
       await expect(
-        ERC4626AssetManagerFact.deploy(
+        AssetManagerFact.deploy(
           balancerVault.address,
           tetuVault.address,
-          ethers.constants.AddressZero,
-          rewardCollector.address,
-          gague.address
+          ethers.constants.AddressZero
         )
       ).is.rejectedWith("zero token")
     })
 
     it("Balancer vault can't be empty during the initialization", async function () {
-      const ERC4626AssetManagerFact = await ethers.getContractFactory("ERC4626AssetManager")
+      const AssetManagerFact = await ethers.getContractFactory("TetuVaultAssetManager")
       await expect(
-        ERC4626AssetManagerFact.deploy(
+        AssetManagerFact.deploy(
           ethers.constants.AddressZero,
           tetuVault.address,
-          tokens[0].address,
-          rewardCollector.address,
-          gague.address
+          tokens[0].address
         )
       ).is.rejectedWith("zero balancer vault")
     })
 
     it("Tetu vault can't be empty during the initialization", async function () {
-      const ERC4626AssetManagerFact = await ethers.getContractFactory("ERC4626AssetManager")
+      const AssetManagerFact = await ethers.getContractFactory("TetuVaultAssetManager")
       await expect(
-        ERC4626AssetManagerFact.deploy(
+        AssetManagerFact.deploy(
           balancerVault.address,
           ethers.constants.AddressZero,
-          tokens[0].address,
-          rewardCollector.address,
-          gague.address
+          tokens[0].address
         )
-      ).is.rejectedWith("zero ERC4626 vault")
-    })
-
-    it("rewardCollector can't be empty during the initialization", async function () {
-      const ERC4626AssetManagerFact = await ethers.getContractFactory("ERC4626AssetManager")
-      await expect(
-        ERC4626AssetManagerFact.deploy(
-          balancerVault.address,
-          tetuVault.address,
-          tokens[0].address,
-          ethers.constants.AddressZero,
-          gague.address
-        )
-      ).is.rejectedWith("zero rewardCollector")
+      ).is.rejectedWith("zero tetu vault")
     })
 
     it("AM should not invest in tetu vault if vault not returns receipt tokens", async function () {
@@ -294,21 +263,6 @@ describe("ERC4626AssetManager tests", function () {
       await expect(assetManager.rebalance(poolId, false)).is.rejectedWith("AM should receive shares after the deposit")
     })
 
-    it("AM should not withdraw from tetu vault if vault not returns tokens", async function () {
-      await setupTestCase(true, false)
-      await initPool(tokens)
-      await assetManager.rebalance(poolId, false)
-
-      const config = {
-        targetPercentage: BigNumber.from(0),
-        upperCriticalPercentage: BigNumber.from(0),
-        lowerCriticalPercentage: BigNumber.from(0)
-      }
-      await stablePool.setAssetManagerPoolConfig(tokens[0].address, Misc.encodeInvestmentConfig(config))
-      await expect(assetManager.rebalance(poolId, false)).is.rejectedWith(
-        "AM should receive requested tokens after the withdraw"
-      )
-    })
   })
 
   describe("Invest", function () {
@@ -393,26 +347,6 @@ describe("ERC4626AssetManager tests", function () {
       expect(await tokens[0].balanceOf(assetManager.address)).is.eq(extraTokens)
     })
 
-    it("Relayer should disallows reentrancy on join operation", async function () {
-      await setupTestCase(true, true, true, BigNumber.from("100"), "MockReentrantAssetManager")
-      await initPool(tokens)
-      const t0ToDeposit = BigNumber.from(10).mul(BigNumber.from(10).pow(18))
-      const t1ToDeposit = BigNumber.from(10).mul(BigNumber.from(10).pow(18))
-      await expect(deposit(user, tokens, [t0ToDeposit, t1ToDeposit])).is.rejectedWith("Rebalancing relayer reentered")
-    })
-
-    it("AM should properly calculate amounts for vault with fee", async function () {
-      await initPool(tokens)
-      await tetuVault.setFeeNom(BigNumber.from(10))
-      await assetManager.rebalance(poolId, false)
-
-      let poolManaged
-      let poolCash
-      ;[poolCash , poolManaged] = await assetManager.getPoolBalances(poolId)
-      expect(poolCash).is.eq(BigNumber.from("20000000000000000000"))
-      // 80000000000000000000 - 10%
-      expect(poolManaged).is.eq(BigNumber.from("72000000000000000000"))
-    })
   })
 
   describe("Withdraw", function () {
@@ -477,6 +411,23 @@ describe("ERC4626AssetManager tests", function () {
       ;[, poolManaged] = await assetManager.getPoolBalances(poolId)
       expect(poolManaged).is.eq(0)
     })
+
+    it("AM should not withdraw from tetu vault if vault not returns tokens", async function () {
+      await setupTestCase(true, false)
+      await initPool(tokens)
+      await assetManager.rebalance(poolId, false)
+
+      const config = {
+        targetPercentage: BigNumber.from(0),
+        upperCriticalPercentage: BigNumber.from(0),
+        lowerCriticalPercentage: BigNumber.from(0)
+      }
+      await stablePool.setAssetManagerPoolConfig(tokens[0].address, Misc.encodeInvestmentConfig(config))
+      await expect(assetManager.rebalance(poolId, false)).is.rejectedWith(
+        "AM should receive requested tokens after the withdraw"
+      )
+    })
+
   })
 
   describe("AM Config tests", function () {
@@ -525,29 +476,4 @@ describe("ERC4626AssetManager tests", function () {
     })
   })
 
-  describe("Claim gague rewards", function () {
-    it("Relayer should be able to claim rewards", async function () {
-      const feeCollectorBalBefore = await mockRewardToken.balanceOf(rewardCollector.address)
-      await relayer.claimAssetManagerRewards(poolId)
-      const feeCollectorBalAfter = await mockRewardToken.balanceOf(rewardCollector.address)
-      expect(feeCollectorBalAfter).is.gt(feeCollectorBalBefore)
-      expect(feeCollectorBalAfter).is.eq(BigNumber.from(100))
-    })
-
-    it("Relayer should process claim transaction with empty gague", async function () {
-      await setupTestCase(true, true, false)
-      const feeCollectorBalBefore = await mockRewardToken.balanceOf(rewardCollector.address)
-      await relayer.claimAssetManagerRewards(poolId)
-      const feeCollectorBalAfter = await mockRewardToken.balanceOf(rewardCollector.address)
-      expect(feeCollectorBalAfter).is.eq(feeCollectorBalBefore)
-    })
-
-    it("Relayer should process claim transaction when no gague rewards", async function () {
-      await setupTestCase(true, true, true, BigNumber.from(0))
-      const feeCollectorBalBefore = await mockRewardToken.balanceOf(rewardCollector.address)
-      await relayer.claimAssetManagerRewards(poolId)
-      const feeCollectorBalAfter = await mockRewardToken.balanceOf(rewardCollector.address)
-      expect(feeCollectorBalAfter).is.eq(feeCollectorBalBefore)
-    })
-  })
 })

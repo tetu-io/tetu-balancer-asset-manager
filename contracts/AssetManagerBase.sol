@@ -310,7 +310,7 @@ abstract contract AssetManagerBase is IAssetManagerBase {
     } else {
       // Pool is over-invested so remove some funds
       uint256 rebalanceAmount = poolManaged - targetInvestment;
-      if(rebalanceAmount != 0){
+      if (rebalanceAmount != 0) {
         _capitalOut(rebalanceAmount);
       }
     }
