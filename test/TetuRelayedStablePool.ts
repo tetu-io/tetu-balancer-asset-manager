@@ -5,7 +5,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { ethers } from "hardhat"
 import { Authorizer, MockERC20, Relayer, TetuRelayedStablePool, Vault } from "../typechain"
 import { BigNumber } from "ethers"
-import { bn, Misc, PoolSpecialization } from "./utils/Misc"
+import { bn, Misc } from "./utils/Misc"
 
 const { expect } = chai
 chai.use(chaiAsPromised)
@@ -73,7 +73,7 @@ describe("TetuStablePool tests", function () {
 
     await authorizer.grantRole(actionJoin, relayer.address)
     await authorizer.grantRole(actionExit, relayer.address)
-
+    await balancerVault.setRelayerApproval(deployer.address, relayer.address, true)
     await balancerVault.connect(user).setRelayerApproval(user.address, relayer.address, true)
   })
 
@@ -92,7 +92,7 @@ describe("TetuStablePool tests", function () {
       userData: initUserData,
       fromInternalBalance: false
     }
-    await balancerVault.joinPool(poolId, deployer.address, deployer.address, joinPoolRequest)
+    await relayer.joinPool(poolId, deployer.address, joinPoolRequest)
   }
 
   describe("General tests", function () {
@@ -178,7 +178,7 @@ describe("TetuStablePool tests", function () {
       }
       await expect(
         balancerVault.connect(user).joinPool(poolId, user.address, user.address, joinPoolRequest)
-      ).is.rejectedWith("Only relayer can join pool")
+      ).is.rejectedWith("BAL#324")
     })
 
     it("Only Relayer should be able to exit", async function () {
@@ -192,7 +192,7 @@ describe("TetuStablePool tests", function () {
           userData: exitUserData,
           toInternalBalance: false
         })
-      ).is.rejectedWith("Only relayer can exit pool")
+      ).is.rejectedWith("BAL#324")
     })
 
     it("Pool should return relayer address", async function () {

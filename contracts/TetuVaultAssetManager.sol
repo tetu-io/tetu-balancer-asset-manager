@@ -8,7 +8,6 @@ import "./third_party/balancer/IBVault.sol";
 import "./interfaces/ISmartVault.sol";
 import "./interfaces/IGauge.sol";
 import "./AssetManagerBase.sol";
-import "hardhat/console.sol";
 
 /// @title TetuVaultAssetManager
 /// @dev TetuVaultAssetManager can invest funds to the TETU vault.

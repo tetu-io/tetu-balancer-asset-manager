@@ -31,6 +31,7 @@
   "license": "ISC",
   "homepage": "https://tetu.io/",
   "dependencies": {
+    "@balancer-labs/v2-interfaces": "^0.1.0",
     "@balancer-labs/v2-pool-stable": "^2.0.0",
     "@balancer-labs/v2-pool-utils": "^2.0.1",
     "@balancer-labs/v2-pool-weighted": "^2.0.1",
