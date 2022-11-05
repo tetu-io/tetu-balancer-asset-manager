@@ -61,7 +61,7 @@ describe("TetuVaultAssetManager tests", function () {
     }
     const tx = await relayer.joinPool(poolId, deployer.address, joinPoolRequest)
     const receipt = await tx.wait()
-    expect(receipt.gasUsed).is.lt(540000, "Pool Init transaction consumes more gas than expected")
+    expect(receipt.gasUsed).is.lt(570000, "Pool Init transaction consumes more gas than expected")
   }
 
   const deposit = async (depositor: SignerWithAddress, tokens: MockERC20[], depositAmounts: BigNumberish[]) => {
@@ -275,7 +275,7 @@ describe("TetuVaultAssetManager tests", function () {
 
       const tx = await assetManager.rebalance(poolId, true)
       const receipt = await tx.wait()
-      expect(receipt.gasUsed).is.lt(140000, "Pool Rebalance transaction consumes more gas than expected")
+      expect(receipt.gasUsed).is.lt(146000, "Pool Rebalance transaction consumes more gas than expected")
 
       const balances = await balancerVault.getPoolTokenInfo(poolId, tokens[0].address)
       const expectedToBeInTetuVault = t0InitialBalance

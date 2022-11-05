@@ -99,5 +99,5 @@ contract TetuVaultAssetManager is AssetManagerBase {
   }
 
   /// @dev Rewards will be claimed by the TETU governance
-  function _claim() internal override {}
+  function _claim() internal pure override {}
 }
