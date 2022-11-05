@@ -85,8 +85,6 @@ contract TetuVaultAssetManager is AssetManagerBase {
    * @return the number of tokens to return to the balancerVault
    */
   function _divest(uint256 amountUnderlying) internal override returns (uint256) {
-    console.log("Hello!");
-
     amountUnderlying = Math.min(amountUnderlying, IERC20(tetuVault).balanceOf(address(this)));
     uint256 existingBalance = underlying.balanceOf(address(this));
     if (amountUnderlying > 0) {
