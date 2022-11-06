@@ -12,6 +12,7 @@ contract MockTetuSmartVault is ISmartVault, ERC20 {
   IERC20 public asset;
   bool isReturnTokens;
   bool isReturnShares;
+  uint256 underlyingDecimals;
 
   constructor(
     address _asset,
@@ -24,13 +25,18 @@ contract MockTetuSmartVault is ISmartVault, ERC20 {
     isReturnShares = _isReturnShares;
     isReturnTokens = _isReturnTokens;
     asset = IERC20(_asset);
+    underlyingDecimals = _decimals;
   }
 
   function underlyingBalanceInVault() external override view returns (uint256){
     return asset.balanceOf(address(this));
   }
 
-  function depositAndInvest(uint256 amount) external override {
+  function underlyingBalanceWithInvestmentForHolder(address) external override view returns (uint256){
+    return asset.balanceOf(address(this));
+  }
+
+  function deposit(uint256 amount) external override {
     asset.safeTransferFrom(msg.sender, address(this), amount);
     if (isReturnShares) {
       _mint(msg.sender, amount);
@@ -43,4 +49,17 @@ contract MockTetuSmartVault is ISmartVault, ERC20 {
     }
 
   }
+
+  function transferUnderlying(uint amount, address to) public{
+    asset.transfer(to, amount);
+  }
+
+  function underlyingUnit() external override view returns (uint256){
+    return 10**underlyingDecimals;
+  }
+
+  function getPricePerFullShare() external override view returns (uint256){
+    return 10**underlyingDecimals;
+  }
+
 }

@@ -74,19 +74,15 @@ contract ERC4626AssetManager is AssetManagerBase {
    * @return the amount deposited
    */
   function _invest(uint256 amount) internal override returns (uint256) {
-    uint256 balance = underlying.balanceOf(address(this));
-    if (amount < balance) {
-      balance = amount;
-    }
     uint256 sharesBefore = IERC20(erc4626Vault).balanceOf(address(this));
 
     // invest to ERC4626 Vault
-    IERC4626(erc4626Vault).deposit(balance, address(this));
+    IERC4626(erc4626Vault).deposit(amount, address(this));
     uint256 sharesAfter = IERC20(erc4626Vault).balanceOf(address(this));
 
     require(sharesAfter > sharesBefore, "AM should receive shares after the deposit");
-    emit Invested(balance);
-    return balance;
+    emit Invested(amount);
+    return amount;
   }
 
   /**
@@ -97,15 +93,12 @@ contract ERC4626AssetManager is AssetManagerBase {
   function _divest(uint256 amountUnderlying) internal override returns (uint256) {
     amountUnderlying = Math.min(amountUnderlying, IERC4626(erc4626Vault).maxWithdraw(address(this)));
     uint256 existingBalance = underlying.balanceOf(address(this));
-    if (amountUnderlying > 0) {
-      IERC4626(erc4626Vault).withdraw(amountUnderlying, address(this), address(this));
-      uint256 newBalance = underlying.balanceOf(address(this));
-      uint256 divested = newBalance - existingBalance;
-      require(divested > 0, "AM should receive requested tokens after the withdraw");
-      emit Devested(divested);
-      return divested;
-    }
-    return 0;
+    IERC4626(erc4626Vault).withdraw(amountUnderlying, address(this), address(this));
+    uint256 newBalance = underlying.balanceOf(address(this));
+    uint256 divested = newBalance - existingBalance;
+    require(divested > 0, "AM should receive requested tokens after the withdraw");
+    emit Devested(divested);
+    return divested;
   }
 
   /// @dev Claim all rewards from given gague and send to rewardCollector

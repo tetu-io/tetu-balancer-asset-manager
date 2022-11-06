@@ -15,6 +15,7 @@ import {
 import { Misc } from "./utils/Misc"
 import { BigNumber } from "ethers"
 import { BigNumberish } from "ethers/lib/ethers"
+import { address } from "hardhat/internal/core/config/config-validation"
 
 const { expect } = chai
 chai.use(chaiAsPromised)
@@ -424,6 +425,11 @@ describe("TetuVaultAssetManager tests", function () {
       await expect(assetManager.rebalance(poolId, false)).is.rejectedWith(
         "AM should receive requested tokens after the withdraw"
       )
+    })
+
+    it("AM should be allowed to call and do nothing on claim", async function() {
+      await initPool(tokens)
+      await assetManager.claimRewards()
     })
 
   })
