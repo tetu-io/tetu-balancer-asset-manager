@@ -4,7 +4,6 @@ yarn.lock
 #Hardhat files
 cache
 artifacts
-deployments
 typechain
 coverage
 coverage.json
