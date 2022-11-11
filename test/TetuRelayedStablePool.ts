@@ -29,16 +29,16 @@ describe("TetuStablePool tests", function () {
   before(async function () {
     ;[deployer, user] = await ethers.getSigners()
     const USDC = await ethers.getContractFactory("MockERC20")
-    const mockUsdc = await USDC.deploy("USD Coin (PoS)", "USDC", 18)
+    const mockUsdc = await USDC.deploy("USD Coin (PoS)", "USDC", 18) as MockERC20
     await mockUsdc.mint(deployer.address, BigNumber.from(Misc.largeApproval))
     await mockUsdc.mint(user.address, BigNumber.from(Misc.largeApproval))
 
     const DAI = await ethers.getContractFactory("MockERC20")
-    const mockDai = await DAI.deploy("(PoS) Dai Stablecoin", "DAI", 18)
+    const mockDai = await DAI.deploy("(PoS) Dai Stablecoin", "DAI", 18) as MockERC20
     await mockDai.mint(deployer.address, BigNumber.from(Misc.largeApproval))
     await mockDai.mint(user.address, BigNumber.from(Misc.largeApproval))
     const WETH = await ethers.getContractFactory("MockERC20")
-    mockWeth = await WETH.deploy("WETH", "WETH", 18)
+    mockWeth = await WETH.deploy("WETH", "WETH", 18) as MockERC20
     tokens = Misc.sortTokens([mockUsdc, mockDai])
   })
 
@@ -50,7 +50,7 @@ describe("TetuStablePool tests", function () {
     balancerVault = (await BalVaultFactory.deploy(authorizer.address, mockWeth.address, 0, 0)) as Vault
 
     const RelayerFact = await ethers.getContractFactory("Relayer")
-    relayer = await RelayerFact.deploy(balancerVault.address)
+    relayer = await RelayerFact.deploy(balancerVault.address) as Relayer
 
     const TetuStablePoolFact = await ethers.getContractFactory("TetuRelayedStablePool")
     stablePool = (await TetuStablePoolFact.deploy(

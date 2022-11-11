@@ -68,6 +68,11 @@ export class Misc {
   public static sortTokens(tokens: MockERC20[]) {
     return tokens.sort((tokenA, tokenB) => (tokenA.address.toLowerCase() > tokenB.address.toLowerCase() ? 1 : -1))
   }
+
+  public static sortAddresses(tokens: String[]) {
+    return tokens.sort((tokenA, tokenB) => (tokenA.toLowerCase() > tokenB.toLowerCase() ? 1 : -1))
+  }
+
 }
 
 function encodeJoinExitMockPool(amounts: BigNumberish[], dueProtocolFeeAmounts: BigNumberish[]): string {
