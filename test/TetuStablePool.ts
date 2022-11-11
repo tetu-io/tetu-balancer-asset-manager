@@ -5,17 +5,13 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { ethers, network } from "hardhat"
 import {
   Authorizer,
-  IERC20,
   MockERC20,
   ProtocolFeesCollector,
-  Relayer,
   TestTetuStablePool,
-  TetuRelayedStablePool,
   Vault
 } from "../typechain"
-import { BigNumber, BigNumberish } from "ethers"
+import { BigNumber } from "ethers"
 import { bn, Misc, PoolSpecialization } from "./utils/Misc"
-import { BytesLike } from "@ethersproject/bytes"
 
 const { expect } = chai
 chai.use(chaiAsPromised)

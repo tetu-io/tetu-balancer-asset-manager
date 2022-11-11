@@ -42,6 +42,24 @@ abstract contract AssetManagerBase is IAssetManagerBase {
   event PoolBalanceUpdated(bytes32 poolId, uint256 newAUM);
 
   // ***************************************************
+  //               Virtual functions
+  // ***************************************************
+
+  /**
+   * @dev Invests capital inside the asset manager
+   * @param amount - the amount of tokens being deposited
+   * @return the number of tokens that were deposited
+   */
+  function _invest(uint256 amount) internal virtual returns (uint256);
+
+  /**
+   * @dev Divests capital back to the asset manager
+   * @param amount - the amount of tokens being withdrawn
+   * @return the number of tokens to return to the vault
+   */
+  function _divest(uint256 amount) internal virtual returns (uint256);
+
+  // ***************************************************
   //                CONSTRUCTOR/INITIALIZATION
   // ***************************************************
   constructor(IBVault balancerVault_, IERC20 underlying_) {
@@ -212,13 +230,12 @@ abstract contract AssetManagerBase is IAssetManagerBase {
   function _capitalIn(uint256 amount) private {
     IBVault.PoolBalanceOp[] memory ops = new IBVault.PoolBalanceOp[](2);
     // Update the vault with new managed balance accounting for returns
-    uint256 aum = _getAUM();
-    ops[0] = IBVault.PoolBalanceOp(IBVault.PoolBalanceOpKind.UPDATE, poolId, underlying, aum);
+    ops[0] = IBVault.PoolBalanceOp(IBVault.PoolBalanceOpKind.UPDATE, poolId, underlying, _getAUM());
     // Pull funds from the vault
     ops[1] = IBVault.PoolBalanceOp(IBVault.PoolBalanceOpKind.WITHDRAW, poolId, underlying, amount);
     balancerVault.managePoolBalance(ops);
 
-    _invest(amount, aum);
+    _invest(amount);
   }
 
   /**
@@ -227,7 +244,7 @@ abstract contract AssetManagerBase is IAssetManagerBase {
    */
   function _capitalOut(uint256 amount) private {
     uint256 aum = _getAUM();
-    uint256 tokensOut = _divest(amount, aum);
+    uint256 tokensOut = _divest(amount);
     IBVault.PoolBalanceOp[] memory ops = new IBVault.PoolBalanceOp[](2);
     // Update the vault with new managed balance accounting for returns
     ops[0] = IBVault.PoolBalanceOp(IBVault.PoolBalanceOpKind.UPDATE, poolId, underlying, aum);
@@ -236,21 +253,6 @@ abstract contract AssetManagerBase is IAssetManagerBase {
 
     balancerVault.managePoolBalance(ops);
   }
-
-  /**
-   * @dev Invests capital inside the asset manager
-   * @param amount - the amount of tokens being deposited
-   * @param aum - the assets under management
-   * @return the number of tokens that were deposited
-   */
-  function _invest(uint256 amount, uint256 aum) internal virtual returns (uint256);
-
-  /**
-   * @dev Divests capital back to the asset manager
-   * @param amount - the amount of tokens being withdrawn
-   * @return the number of tokens to return to the vault
-   */
-  function _divest(uint256 amount, uint256 aum) internal virtual returns (uint256);
 
   /// @dev Claim all rewards and send to rewardCollector
   function claimRewards() external override {
@@ -297,8 +299,7 @@ abstract contract AssetManagerBase is IAssetManagerBase {
   }
 
   function _rebalance() internal {
-    uint256 aum = _getAUM();
-    (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
+    (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(_getAUM());
     InvestmentConfig memory config = _config;
 
     uint256 targetInvestment = ((poolCash + poolManaged) * config.targetPercentage) / _CONFIG_PRECISION;
@@ -309,7 +310,9 @@ abstract contract AssetManagerBase is IAssetManagerBase {
     } else {
       // Pool is over-invested so remove some funds
       uint256 rebalanceAmount = poolManaged - targetInvestment;
-      _capitalOut(rebalanceAmount);
+      if (rebalanceAmount != 0) {
+        _capitalOut(rebalanceAmount);
+      }
     }
 
     emit Rebalance(poolId);

@@ -3,7 +3,7 @@ import chaiAsPromised from "chai-as-promised"
 import { solidity } from "ethereum-waffle"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { ethers } from "hardhat"
-import { Authorizer, MockERC20, Relayer, TetuRelayedStablePool, Vault } from "../typechain"
+import { Authorizer, MockERC20, RelayedWeightedPool, Relayer, TetuRelayedStablePool, Vault } from "../typechain"
 import { BigNumber } from "ethers"
 import { bn, Misc } from "./utils/Misc"
 
@@ -11,11 +11,11 @@ const { expect } = chai
 chai.use(chaiAsPromised)
 chai.use(solidity)
 
-describe("TetuStablePool tests", function () {
+describe("TetuRelayedWeightedPool tests", function () {
   let deployer: SignerWithAddress
   let relayer: Relayer
   let user: SignerWithAddress
-  let stablePool: TetuRelayedStablePool
+  let weightedPool: RelayedWeightedPool
   let poolId: string
   let balancerVault: Vault
   let tokens: MockERC20[]
@@ -52,21 +52,21 @@ describe("TetuStablePool tests", function () {
     const RelayerFact = await ethers.getContractFactory("Relayer")
     relayer = await RelayerFact.deploy(balancerVault.address)
 
-    const TetuStablePoolFact = await ethers.getContractFactory("TetuRelayedStablePool")
-    stablePool = (await TetuStablePoolFact.deploy(
+    const RelayedWeightedPool = await ethers.getContractFactory("RelayedWeightedPool")
+    weightedPool = (await RelayedWeightedPool.deploy(
       balancerVault.address,
       poolName,
       poolSymbol,
       [tokens[0].address, tokens[1].address],
-      ampParam,
+      ["300000000000000000", "700000000000000000"],
+      [ethers.constants.AddressZero, ethers.constants.AddressZero],
       swapFee,
       "0",
       "0",
       deployer.address,
       relayer.address,
-      [ethers.constants.AddressZero, ethers.constants.AddressZero]
-    )) as TetuRelayedStablePool
-    poolId = await stablePool.getPoolId()
+    )) as RelayedWeightedPool
+    poolId = await weightedPool.getPoolId()
 
     const actionJoin = await Misc.actionId(balancerVault, "joinPool")
     const actionExit = await Misc.actionId(balancerVault, "exitPool")
@@ -97,9 +97,9 @@ describe("TetuStablePool tests", function () {
 
   describe("General tests", function () {
     it("Smoke test", async function () {
-      expect(await stablePool.name()).is.eq(poolName)
-      expect(await stablePool.symbol()).is.eq(poolSymbol)
-      expect(await stablePool.getSwapFeePercentage()).is.eq(swapFee)
+      expect(await weightedPool.name()).is.eq(poolName)
+      expect(await weightedPool.symbol()).is.eq(poolSymbol)
+      expect(await weightedPool.getSwapFeePercentage()).is.eq(swapFee)
     })
 
     it("Owner can initialize pool", async function () {
@@ -112,15 +112,15 @@ describe("TetuStablePool tests", function () {
     it("User should be able to join/exit via Relayer", async function () {
       await initPool(tokens)
 
-      const initialBalances = [BigNumber.from(100), BigNumber.from(100)]
+      const initialBalances = [bn(10000000), bn(10000000)]
 
       await tokens[0].connect(user).approve(balancerVault.address, initialBalances[0])
       await tokens[1].connect(user).approve(balancerVault.address, initialBalances[1])
 
-      const JOIN_KIND_INIT = 1
+      const EXACT_TOKENS_IN_FOR_BPT_OUT = 1
       const initUserData = ethers.utils.defaultAbiCoder.encode(
-        ["uint256", "uint256[]"],
-        [JOIN_KIND_INIT, initialBalances]
+        ['uint256', 'uint256[]', 'uint256'],
+        [EXACT_TOKENS_IN_FOR_BPT_OUT, initialBalances, 0]
       )
       const joinPoolRequest = {
         assets: [tokens[0].address, tokens[1].address],
@@ -134,7 +134,7 @@ describe("TetuStablePool tests", function () {
       expect(tokenInfo1[0]).is.eq(expectedToken0Balance)
       expect(tokenInfo1[1]).is.eq(0)
 
-      const bptBalance = await stablePool.balanceOf(user.address)
+      const bptBalance = await weightedPool.balanceOf(user.address)
       expect(bptBalance).is.gt(0)
 
       const exitUserData = ethers.utils.defaultAbiCoder.encode(
@@ -196,11 +196,11 @@ describe("TetuStablePool tests", function () {
     })
 
     it("Pool should return relayer address", async function () {
-      expect(await stablePool.getRelayer()).is.eq(relayer.address)
+      expect(await weightedPool.getRelayer()).is.eq(relayer.address)
     })
 
     it("sets scaling factors", async () => {
-      const poolScalingFactors = await stablePool.getScalingFactors()
+      const poolScalingFactors = await weightedPool.getScalingFactors()
       const tokenScalingFactors = [BigNumber.from(10).pow(18), BigNumber.from(10).pow(18)]
       expect(poolScalingFactors).to.deep.equal(tokenScalingFactors)
     })
