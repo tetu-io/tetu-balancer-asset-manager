@@ -96,14 +96,14 @@ describe("TetuVaultAssetManager tests", function () {
     assetManagerImplementation = "TetuVaultAssetManager"
   ) => {
     const VaultFactory = await ethers.getContractFactory("MockTetuSmartVault")
-    tetuVault = await VaultFactory.deploy(tokens[0].address, "TetuT0", "TetuT0", 18, isReturnShares, isReturnTokens)
+    tetuVault = await VaultFactory.deploy(tokens[0].address, "TetuT0", "TetuT0", 18, isReturnShares, isReturnTokens) as MockTetuSmartVault
 
     const AuthFact = await ethers.getContractFactory("Authorizer")
     const authorizer = (await AuthFact.deploy(deployer.address)) as Authorizer
     const BalVaultFactory = await ethers.getContractFactory("Vault")
     balancerVault = (await BalVaultFactory.deploy(authorizer.address, mockWeth.address, 0, 0)) as Vault
     const RelayerFact = await ethers.getContractFactory("Relayer")
-    relayer = await RelayerFact.deploy(balancerVault.address)
+    relayer = await RelayerFact.deploy(balancerVault.address) as Relayer
 
     const AssetManagerFact = await ethers.getContractFactory(assetManagerImplementation)
     assetManager = (await AssetManagerFact.deploy(
@@ -152,16 +152,16 @@ describe("TetuVaultAssetManager tests", function () {
   before(async function () {
     ;[deployer, user] = await ethers.getSigners()
     const USDC = await ethers.getContractFactory("MockERC20")
-    const mockUsdc = await USDC.deploy("USD Coin (PoS)", "USDC", 18)
+    const mockUsdc = await USDC.deploy("USD Coin (PoS)", "USDC", 18) as MockERC20
     await mockUsdc.mint(deployer.address, BigNumber.from(Misc.largeApproval))
     await mockUsdc.mint(user.address, BigNumber.from(Misc.largeApproval))
     const DAI = await ethers.getContractFactory("MockERC20")
-    const mockDai = await DAI.deploy("(PoS) Dai Stablecoin", "DAI", 18)
+    const mockDai = await DAI.deploy("(PoS) Dai Stablecoin", "DAI", 18) as MockERC20
 
     const WETH = await ethers.getContractFactory("MockERC20")
-    mockWeth = await WETH.deploy("WETH", "WETH", 18)
+    mockWeth = await WETH.deploy("WETH", "WETH", 18) as MockERC20
     const RT = await ethers.getContractFactory("MockERC20")
-    mockRewardToken = await RT.deploy("RT", "RT", 18)
+    mockRewardToken = await RT.deploy("RT", "RT", 18) as MockERC20
 
     await mockDai.mint(deployer.address, BigNumber.from(Misc.largeApproval))
     await mockDai.mint(user.address, BigNumber.from(Misc.largeApproval))

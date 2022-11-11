@@ -10,6 +10,8 @@ import "hardhat-gas-reporter"
 import "hardhat-tracer"
 import "solidity-coverage"
 import "hardhat-abi-exporter"
+import 'hardhat-deploy';
+import 'hardhat-deploy-ethers';
 
 dotEnvConfig()
 // tslint:disable-next-line:no-var-requires
@@ -90,6 +92,30 @@ export default {
         }
       }
     ]
+  },
+  namedAccounts: {
+    deployer: 0,
+    balancerVault: {
+      "matic": "0xBA12222222228d8Ba445958a75a0704d566BF2C8"
+    },
+    tetuVaultUSDC: {
+      "matic": "0xeE3B4Ce32A6229ae15903CDa0A5Da92E739685f7"
+    },
+    tetuVaultDAI: {
+      "matic": "0xb4607D4B8EcFafd063b3A3563C02801c4C7366B2"
+    },
+    tetuVaultUSDT: {
+      "matic": "0xE680e0317402ad3CB37D5ed9fc642702658Ef57F"
+    },
+    usdcToken:{
+      "matic": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+    },
+    daiToken:{
+      "matic": "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063"
+    },
+    usdtToken:{
+      "matic": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
+    }
   },
   paths: {
     sources: "./contracts",
