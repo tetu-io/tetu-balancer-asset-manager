@@ -41,37 +41,37 @@ describe("TetuStablePool tests", function () {
   before(async function () {
     ;[deployer, user] = await ethers.getSigners()
     const USDC = await ethers.getContractFactory("MockERC20")
-    const mockUsdc = await USDC.deploy("USD Coin (PoS)", "USDC", 18)
+    const mockUsdc = await USDC.deploy("USD Coin (PoS)", "USDC", 18) as MockERC20
     await mockUsdc.mint(deployer.address, BigNumber.from(Misc.largeApproval))
     await mockUsdc.mint(user.address, BigNumber.from(Misc.largeApproval))
 
     const DAI = await ethers.getContractFactory("MockERC20")
-    const mockDai = await DAI.deploy("(PoS) Dai Stablecoin", "DAI", 18)
+    const mockDai = await DAI.deploy("(PoS) Dai Stablecoin", "DAI", 18) as MockERC20
     await mockDai.mint(deployer.address, BigNumber.from(Misc.largeApproval))
     await mockDai.mint(user.address, BigNumber.from(Misc.largeApproval))
 
     const T2 = await ethers.getContractFactory("MockERC20")
-    const mockT2 = await T2.deploy("(PoS) T2 Stablecoin", "T2", 18)
+    const mockT2 = await T2.deploy("(PoS) T2 Stablecoin", "T2", 18) as MockERC20
     await mockT2.mint(deployer.address, BigNumber.from(Misc.largeApproval))
     await mockT2.mint(user.address, BigNumber.from(Misc.largeApproval))
 
     const T3 = await ethers.getContractFactory("MockERC20")
-    const mockT3 = await T3.deploy("(PoS) T3 Stablecoin", "T3", 18)
+    const mockT3 = await T3.deploy("(PoS) T3 Stablecoin", "T3", 18) as MockERC20
     await mockT3.mint(deployer.address, BigNumber.from(Misc.largeApproval))
     await mockT3.mint(user.address, BigNumber.from(Misc.largeApproval))
 
     const T4 = await ethers.getContractFactory("MockERC20")
-    const mockT4 = await T4.deploy("(PoS) T4 Stablecoin", "T4", 18)
+    const mockT4 = await T4.deploy("(PoS) T4 Stablecoin", "T4", 18) as MockERC20
     await mockT4.mint(deployer.address, BigNumber.from(Misc.largeApproval))
     await mockT4.mint(user.address, BigNumber.from(Misc.largeApproval))
 
     const T5 = await ethers.getContractFactory("MockERC20")
-    const mockT5 = await T5.deploy("(PoS) T5 Stablecoin", "T5", 18)
+    const mockT5 = await T5.deploy("(PoS) T5 Stablecoin", "T5", 18) as MockERC20
     await mockT5.mint(deployer.address, BigNumber.from(Misc.largeApproval))
     await mockT5.mint(user.address, BigNumber.from(Misc.largeApproval))
 
     const WETH = await ethers.getContractFactory("MockERC20")
-    mockWeth = await WETH.deploy("WETH", "WETH", 18)
+    mockWeth = await WETH.deploy("WETH", "WETH", 18) as MockERC20
     tokens = Misc.sortTokens([mockUsdc, mockDai, mockT2, mockT3, mockT4, mockT5])
   })
 
